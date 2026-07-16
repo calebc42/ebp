@@ -49,7 +49,7 @@ never kill the connection.
 The four-frame dance: `session.hello` → `auth.challenge` →
 `auth.response` → `session.welcome`. Generate a pairing token, show it
 once in your UI, never send it. Verify the client's
-`HMAC-SHA256(token, "jetpacs1:client:" + SNONCE + ":" + CNONCE)` and
+`HMAC-SHA256(token, "ebp1:client:" + SNONCE + ":" + CNONCE)` and
 prove yourself back with the `server` variant (nonces swapped). Fail
 closed on a bad mac — refuse before trusting anything.
 

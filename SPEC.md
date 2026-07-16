@@ -86,8 +86,8 @@ The welcome's optional `protocol` (the companion's wire version) and
   its pairing UI; the user copies it into their Emacs init. The token
   itself never crosses the wire.
 - **Mutual proof (HMAC-SHA256, lowercase hex, keyed by the token):**
-  - client `mac`  = `HMAC(token, "jetpacs1:client:" + SNONCE + ":" + CNONCE)`
-  - `server_proof` = `HMAC(token, "jetpacs1:server:" + CNONCE + ":" + SNONCE)`
+  - client `mac`  = `HMAC(token, "ebp1:client:" + SNONCE + ":" + CNONCE)`
+  - `server_proof` = `HMAC(token, "ebp1:server:" + CNONCE + ":" + SNONCE)`
   - Nonces need uniqueness, not secrecy. Both sides fail closed: a wrong
     client mac is refused before any state is trusted; a missing or wrong
     `server_proof` makes the client drop the connection (a rogue app
