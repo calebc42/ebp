@@ -1,4 +1,4 @@
-# eabp — the Emacs–Android Bridge Protocol
+# ebp — the Emacs Bridge Protocol
 
 A wire contract for connecting a live Emacs to a **companion** that renders
 server-driven UI. Emacs is the source of truth; the companion is a thin pane of

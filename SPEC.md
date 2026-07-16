@@ -1,4 +1,4 @@
-# Jetpacs — the Emacs–Android Bridge Protocol
+# EBP — the Emacs Bridge Protocol
 
 Spec: **1.0-rc** · Wire protocol: **`v: 1`** · Framing: **NDJSON** (one
 JSON object per line) · Status: release candidate — matches the
@@ -6,7 +6,7 @@ reference implementations in the
 [jetpacs repo](https://github.com/calebc42/jetpacs) (the `emacs/core/`
 elisp client and the Android companion)
 
-Jetpacs connects a live Emacs to a mobile *companion* that renders
+EBP connects a live Emacs to a *companion* that renders
 server-driven UI. The design premise: **Emacs is the source of truth; the
 companion is a thin pane of glass.** The companion holds no application
 logic — it renders the specs it is sent, caches them for offline display,
