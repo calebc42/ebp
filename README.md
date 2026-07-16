@@ -34,11 +34,13 @@ Three numbers, all declared in `contract.json` and `SPEC.md`:
   additive, negotiated features (§7–§11) and the node vocabulary (§9), which do
   **not** bump `protocol_version`: a new node type is negotiated per-connection
   via `node_types` (§3), not versioned.
-- **`contract_format`** — the shape of `contract.json` itself (currently `2`).
+- **`contract_format`** — the shape of `contract.json` itself (currently `3`).
 
 Releases are tagged off the protocol/spec numbers (e.g. `spec-1.0-rc`). The
 elisp reference implementation's own API version is a *separate* number that
-lives with that implementation, not here.
+lives with that implementation — `contract.json` carries it only as the
+informational `reference_api_version` (the reference client's Tier-1 surface
+at generation time); pin `protocol_version` / `spec_version` instead.
 
 ## Consumers
 

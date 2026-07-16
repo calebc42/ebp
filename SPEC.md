@@ -409,7 +409,7 @@ this section and the §5 allowlist like any other node tree.
 The normative, machine-checked reference for every node's wire shape is
 [`goldens/widgets.golden`](goldens/widgets.golden) — one JSON line per
 constructor, kept honest by the ERT suite. Since 1.0-rc,
-[`contract.json`](contract.json) (contract_format 2) additionally
+[`contract.json`](contract.json) (contract_format 3) additionally
 publishes the authored per-node key schema (`node_schema`: required and
 optional keys per type, plus the `"*"` row of keys legal on any node)
 and the frame-kind schema (`kind_schema`: sender direction and payload
