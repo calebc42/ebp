@@ -198,9 +198,10 @@ live ones; `fields` carries values a companion collected as part of the
 interaction — presently only an inline-reply notification action's typed
 text as `{key: text}` (§9) — and is `null` when the interaction gathered
 none. The
-`when_offline`/`dedupe`/`ttl_s` fields an author writes on an action
-object (below) are queue policy: the companion consumes them when the
-event is queued and does not echo them in the delivered frame.
+`when_offline`/`dedupe`/`ttl_s`/`confirm` fields an author writes on an
+action object (below) are author-side policy: the companion consumes
+the queue trio when the event is queued, carries `confirm` without ever
+interpreting it, and echoes none of them in the delivered frame.
 
 **The allowlist principle (normative).** An `action` is a *name* the
 client explicitly registered a handler for; `args` are plain data the
@@ -227,6 +228,14 @@ UI: the app-launch picker, the permissions screen — jetpacs-device.el).
   later, e.g. navigation), `"wake"` (try to start Emacs, then queue).
 - `dedupe`: a queued action replaces any queued action with the same
   dedupe key (e.g. repeated saves of one file collapse to the last).
+- `confirm` (since 1.23.0) is a prompt string gating the *client's*
+  dispatch: shown as a native yes/no dialog (via the client's own
+  prompt bridge) before the handler runs — declining is a clean no-op,
+  and a queued tap (§6) confirms at replay. Companion-opaque and never
+  echoed in `event.action`, so a client must resolve the prompt from
+  its own state — the reference client indexes `confirm` by action
+  name + args when it builds the descriptor — never from the
+  delivered frame.
 - `state.changed` carries widget state (text as typed, switch flips,
   multi-select values) keyed by widget `id`; the client mirrors these into
   a UI-state store its handlers read back. It is not an action and runs no
@@ -505,7 +514,12 @@ Summary by family:
   the user's shown month alone. All three are additive nodes —
   negotiate via `node_types` (§3) and fall back (a `table`, or for
   `month_grid` a `flow_row` of `fill_fraction` day boxes) on a
-  companion that predates them.
+  companion that predates them. Each may also carry `children` as the
+  *authored* fallback subtree (since 1.23.0; the reference client's
+  `jetpacs-additive` wrapper): by this section's opening rule an
+  unrecognised `t` renders its children, so a pre-ladder companion
+  shows the fallback while a current one renders the visualization
+  and ignores the slot.
 - **Chrome**: `scaffold` (top_bar / bottom_bar / fab / drawer / snackbar /
   pull-to-refresh), `top_bar`, `bottom_bar` + `nav_item`, `drawer` +
   `drawer_item`, `fab`. The scaffold's `snackbar` string may be
