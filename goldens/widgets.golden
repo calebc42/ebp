@@ -81,3 +81,5 @@
 80 {"children":[{"t":"text","text":"leaf"}],"key":"c1","t":"column"}
 81 {"children":[{"t":"text","text":"leaf"}],"key":"b1","t":"box"}
 82 {"children":[{"t":"text","text":"leaf"}],"key":"s1","t":"surface"}
+83 {"autofocus":true,"clear_on_submit":true,"hint":"Add to today","id":"q1","on_submit":{"action":"x.y","args":{"k":"v"},"dedupe":"d","when_offline":"drop"},"t":"text_input"}
+84 {"autofocus":true,"chromeless":true,"complete":true,"id":"seq-edit-b1-g2.org","on_enter":{"action":"x.y","args":{"k":"v"},"dedupe":"d","when_offline":"drop"},"publish_state":true,"t":"editor","value":"* block"}

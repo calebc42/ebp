@@ -240,6 +240,15 @@ UI: the app-launch picker, the permissions screen — jetpacs-device.el).
   multi-select values) keyed by widget `id`; the client mirrors these into
   a UI-state store its handlers read back. It is not an action and runs no
   handler-side effects beyond per-id subscriptions.
+- **Flush-before-dispatch (normative, since 1.25.0).** A companion that
+  debounces `state.changed` publishing (typing pauses) must flush every
+  diverged stateful-node value — as ordinary `state.changed` events, in
+  the same delivery order — *before* it delivers any `event.action`. A
+  handler that reads the UI-state store therefore never observes a value
+  staler than the interaction that invoked it. A companion that publishes
+  un-debounced satisfies this trivially; a pre-1.25.0 companion may
+  deliver an action ahead of a pending debounce, which clients tolerated
+  with grace-waits.
 
 **Companion-local builtins.** An action object with `builtin` instead of
 `action` is handled on-device and works with Emacs dead:
@@ -479,19 +488,32 @@ Summary by family:
   fixed-column grid is composed as a `flow_row` of `width`- or
   `fill_fraction`-sized cells — there is no dedicated grid node.
 - **Input**: `button`, `icon_button`, `chip`, `assist_chip`, `menu`,
-  `checkbox`, `switch`, `slider` (continuous value; `min`/`max` default
-  0/1, `steps` for discrete; dispatches `on_change` once on release with
-  the value injected), `text_input` (optional `password` masks entry and
+  `checkbox` / `switch` (report every flip as `state.changed`; the
+  optional `on_change` additionally dispatches with the new boolean
+  injected as `value` — declared since format 2, dispatched by the
+  reference companion since 1.25.0), `slider` (continuous value;
+  `min`/`max` default 0/1, `steps` for discrete; dispatches `on_change`
+  once on release with the value injected), `text_input` (optional `password` masks entry and
   requests a password keyboard — such values must not be logged or
   retained; optional `keyboard` picks the IME from the closed enum
   `number`/`decimal`/`email`/`phone`/`uri`, unknown or absent → text,
-  `password` wins), `enum_list` (single/multi select, optional free-add),
+  `password` wins; optional `autofocus` — since 1.25.0 — grabs focus and
+  raises the IME on first composition under a new `id`, same-id re-pushes
+  never re-steal; optional `clear_on_submit` — since 1.25.0 — resets the
+  field in place after the submit dispatch, preserving the composition
+  and so focus and the keyboard, and reports the cleared value as
+  `state.changed`), `enum_list` (single/multi select, optional free-add),
   `date_button` / `time_button` (native pickers),
   `editor` (full editor: save/undo header, optional `syntax`, gutter
   `line_numbers`, `complete` for the completion strip, `chromeless`,
-  `publish_state`, and a server-chosen `toolbar` — a string naming a
-  host-registered native toolbar, or an array of data-driven toolbar
-  items; see "Editor toolbars" below).
+  `publish_state`, optional `autofocus` — since 1.25.0, as on
+  `text_input`; optional `on_enter` — since 1.25.0 — an action the IME's
+  Enter dispatches with the full buffer injected as `value` INSTEAD of
+  inserting a newline, the default keyboard-hide deliberately skipped so
+  chained entry keeps the IME up (a literal newline still comes from a
+  hardware Enter or a toolbar snippet); and a server-chosen `toolbar` — a
+  string naming a host-registered native toolbar, or an array of
+  data-driven toolbar items; see "Editor toolbars" below).
 - **Visualization** (the ladder): `chart` — data-driven, the client emits
   `series` of `points` and picks a `kind` (`line`/`bar`/`area`/`sparkline`);
   the companion draws it animated and theme-coloured, dispatching
