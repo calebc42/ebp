@@ -1,6 +1,6 @@
 {
   "contract_format": 3,
-  "reference_api_version": "1.22.0",
+  "reference_api_version": "1.23.0",
   "protocol_version": 1,
   "spec_version": "1.0-rc",
   "node_types": [
@@ -228,7 +228,8 @@
         "height",
         "y_range",
         "summary",
-        "on_point_tap"
+        "on_point_tap",
+        "children"
       ]
     },
     "canvas": {
@@ -237,7 +238,9 @@
         "height",
         "ops"
       ],
-      "optional": []
+      "optional": [
+        "children"
+      ]
     },
     "month_grid": {
       "required": [
@@ -249,7 +252,8 @@
         "min_month",
         "max_month",
         "on_day_tap",
-        "on_month_change"
+        "on_month_change",
+        "children"
       ]
     },
     "icon": {
@@ -764,7 +768,8 @@
     "builtin",
     "args",
     "when_offline",
-    "dedupe"
+    "dedupe",
+    "confirm"
   ],
   "offline_policies": [
     "queue",
@@ -780,7 +785,8 @@
       "optional": [
         "args",
         "when_offline",
-        "dedupe"
+        "dedupe",
+        "confirm"
       ]
     },
     "view.switch": {
