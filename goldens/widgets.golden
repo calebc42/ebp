@@ -73,3 +73,6 @@
 72 {"color":"success","t":"text","text":"s"}
 73 {"spans":[{"bold":true,"text":"b"}],"t":"rich_text"}
 74 {"spans":[{"code":true,"text":"c"}],"t":"rich_text"}
+75 {"children":[{"t":"text","text":"leaf"}],"key":"r1","t":"row"}
+76 {"children":[{"t":"text","text":"leaf"}],"key":"k1","t":"card"}
+77 {"children":[{"align":"center","children":[{"children":[{"style":"body","t":"text","text":"Keyed"}],"spacing":2,"t":"column","weight":1}],"spacing":12,"t":"row"}],"key":"li1","t":"card"}

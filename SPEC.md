@@ -427,7 +427,13 @@ Summary by family:
   carry `scroll_here: true` — the list scrolls to it on first show and
   whenever its index changes, e.g. a REPL input row pushed down by new
   output; an update that leaves the index unchanged never disturbs the
-  user's scroll position), `box` (weight / alignment / tap), `surface`
+  user's scroll position. A child may also carry `key` — a stable
+  string the companion prefers over the child's `id`, then position, as
+  the child's reconciliation identity across pushes, so inserts,
+  removals, and reorders preserve the row's client-side state, scroll
+  anchoring, and item animation. Additive: an absent `key` and a
+  companion that predates it both degrade to id/position keying),
+  `box` (weight / alignment / tap), `surface`
   (tonal container), `card`, `spacer`, `collapsible` (folds on-device),
   `reorderable_list` (drag to reorder, reports via `on_reorder`),
   `card` additionally takes `swipe_start` / `swipe_end` — per-side swipe
