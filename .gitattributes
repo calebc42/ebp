@@ -1,0 +1,4 @@
+# The contract artifacts are byte-stable (LF, one terminal newline) so the
+# reference implementation's drift/conformance tests can diff them exactly.
+# Normalize everything to LF regardless of platform.
+* text=auto eol=lf
