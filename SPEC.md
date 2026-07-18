@@ -155,7 +155,7 @@ companion where it renders:
 | `widget:*`       | home-screen widget                       | `surfaces.widget`       |
 
 ```
-surface.update   {surface, revision, spec, ttl_s?, stale_spec?, current_view?}
+surface.update   {surface, revision, spec, stale_after_s?, stale_spec?, current_view?}
 surface.remove   {surface}
 ```
 
@@ -164,6 +164,28 @@ surface.remove   {surface}
   surface. This makes updates idempotent and replay-safe.
 - The companion **persists the latest spec** per surface and renders it
   while Emacs is disconnected (that is the offline story).
+- **Staleness is presentation (SHOULD).** `stale_after_s` and
+  `stale_spec` let the cached render admit its age: once the companion
+  has been *disconnected* for `stale_after_s` seconds, it SHOULD render
+  the surface visibly stale (dimmed, marked — the treatment is the
+  companion's own), and if `stale_spec` is present render it in place
+  of the cached `spec` (the whole spec — a multi-view surface's `views`
+  included). The clock starts at disconnect, not at the last update: a
+  connected-but-quiet Emacs is current by definition, since it would
+  have re-pushed anything that changed. Both fields and a
+  last-connected timestamp persist with the cached spec, so process
+  death does not reset the clock. Reconnection clears the treatment at
+  the welcome, without waiting for a fresh push — the §3 revision
+  snapshot may show the cache already current. Actions inside a
+  `stale_spec` are live and queue as normal: a stale screen that can
+  still capture is the point of the offline story. An absent
+  `stale_after_s` means never mark stale — the pre-amendment behavior,
+  so a companion that ignores both fields remains conformant.
+  Staleness is never a correctness boundary — that job belongs to
+  `revision_seen` (§5) — and an author must not use `stale_spec` to
+  remove dangerous controls, because an old companion will not honor
+  the removal. (Naming: this field was sketched pre-1.0 as `ttl_s`;
+  renamed so `ttl_s` means only §5's queue-expiry policy.)
 - **Multi-view surfaces.** A spec of the shape
   `{views: {name: viewSpec, ...}, initial_view: name}` ships several named
   views at once; the companion switches between them locally via the

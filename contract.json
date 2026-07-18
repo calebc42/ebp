@@ -574,7 +574,7 @@
         "spec"
       ],
       "optional": [
-        "ttl_s",
+        "stale_after_s",
         "stale_spec",
         "current_view"
       ]
@@ -769,6 +769,7 @@
     "args",
     "when_offline",
     "dedupe",
+    "ttl_s",
     "confirm"
   ],
   "offline_policies": [
@@ -786,6 +787,7 @@
         "args",
         "when_offline",
         "dedupe",
+        "ttl_s",
         "confirm"
       ]
     },
