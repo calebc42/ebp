@@ -360,14 +360,16 @@ message was computed against.
 ```
 companion → client   event.action {action: "edit.open",     args: {file, session, text}}   seed / reseed (seq 0)
 companion → client   event.action {action: "edit.delta",    args: {file, session, seq, start, del, text, len}}
-companion → client   event.action {action: "edit.caret",    args: {file, session, seq, cursor}}
+companion → client   event.action {action: "edit.caret",    args: {file, session, seq, cursor, sel_start?, sel_end?}}
 companion → client   event.action {action: "edit.close",    args: {file, session}}
 companion → client   event.action {action: "edit.complete", args: {file, session, seq, request_id, cursor}}   pure query
+companion → client   event.action {action: "edit.command",  args: {file, session, seq, cursor, sel_start?, sel_end?, command?}}
 client → companion   completions.show {id, request_id, prefix, candidates: [{label, annotation?, insert?}]}
 client → companion   diagnostics.show {id, session, seq, diags: [{beg, end, type, text}]}
 client → companion   eldoc.show       {id, session, text}
 client → companion   fontify.show     {id, session, seq, runs}
 client → companion   edit.resync      {id, session}
+client → companion   edit.apply       {id, session, seq, cursor, start?, del?, text?, len?, sel_start?, sel_end?}
 ```
 
 In the client → companion frames `id` is the editor id (the synced
@@ -380,6 +382,50 @@ session stale and sends one `edit.resync`, which the companion answers
 with a fresh `edit.open`. Invariant: **wrong state can only ever cause a
 missing feature, never a wrong edit** — the shadow never writes to disk,
 and completion insertion happens companion-side.
+
+**Point and region.** `edit.caret` may carry `sel_start`/`sel_end`
+(present only when the companion's selection is non-collapsed;
+`sel_start ≤ sel_end`, and `cursor` equals one of the two ends — the
+client derives the mark as the other end). A matched caret report is the
+client's licence to persist point/selection as *best-effort* session
+context; it trails the companion's debounce, so anything that needs
+exact coordinates carries them in its own frame instead.
+
+**Commands at point (`edit.command`).** Runs a client-side command in
+the session's buffer with real point and mark. The frame carries the
+companion's exact `cursor` and selection; `command` names the command,
+and an *omitted* `command` asks the client to prompt the user for one
+through its bridged chooser (M-x scoped to the editor — the user, not
+the wire, picks the command; same posture as §5's escape hatch). The
+gate is `edit.complete`'s: session/seq must match the live sync state
+exactly, else the client answers with one `edit.resync` and runs
+nothing. Prompts raised by the command ride the client's ordinary
+dialog bridge.
+
+**Server-authored edits (`edit.apply`).** The reverse of `edit.delta`,
+in two shapes distinguished by the splice keys:
+
+- *Text-changing* — `start`/`del`/`text`/`len` present, same splice
+  semantics as `edit.delta`; `seq` is the **new** sequence number (the
+  client bumps its session seq when emitting, making the seq stream
+  two-writer). The companion applies iff `seq` is exactly one past its
+  own, **and** its current editor text still equals the last state it
+  synced, **and** no IME composition is active — any failed gate drops
+  the frame silently. A drop is safe by construction: the client and
+  companion now disagree on seq, so the next delta round trips the
+  ordinary resync recovery. A race with typing therefore loses the
+  command's *result*, never corrupts text — the invariant above,
+  extended to the reverse direction.
+- *Move-only* — splice keys absent, `seq` unchanged (equals the
+  companion's current): the command moved point or changed the region
+  without editing. Same gates; `cursor`/`sel_start`/`sel_end` position
+  the companion's caret and selection.
+
+The companion should apply a text-changing frame as a single undoable
+edit, so one command is one undo step — undoing it then emits an
+ordinary `edit.delta` back, needing no special casing. `diagnostics.show`
+and `fontify.show` frames that follow an apply are stamped with the new
+seq.
 
 A candidate's optional `insert` is what lands in the buffer when it
 differs from the display `label` (a wikilink chip shows `[[Title` but
