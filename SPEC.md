@@ -306,7 +306,15 @@ UI: the app-launch picker, the permissions screen — jetpacs-device.el).
 informs the client with a drop-policy `view.switched` event) and
 `{"builtin": "clipboard.copy", "text": s}`, and
 `{"builtin": "jetpacs.settings.open"}` (opens Android-owned Jetpacs settings
-for permissions, notifications, offline state, pairing, and diagnostics).
+for permissions, notifications, offline state, pairing, and diagnostics),
+and `{"builtin": "trigger.fire", "id": t}` — fires the §11 `manual`
+registration named `id` through the full trigger pipeline (gate,
+throttle, `on_fire`, event/queue) with fire data `{source: "tap"}`.
+One letter from `trigger.fired`, deliberately: the builtin is the
+cause a user taps; the `trigger.fired` event is the effect the client
+receives. This is what lets home-screen shortcuts, QS tiles, and
+notification buttons fire automations with Emacs dead — `shortcut.pin`
+(§10) is its natural partner.
 
 ## 6. Offline queue
 
@@ -820,6 +828,7 @@ capability.result    {ok, result?}     companion → client (reply)
 | `brightness.set` | `{level}` | — | 0–255, switches to manual brightness; ungranted → `cap-permission` (`write_settings` + the grant deep-link) |
 | `dnd.set` | `{mode}` | — | `on` \| `off` \| `priority`; ungranted → `cap-permission` (`notification_policy` + the grant deep-link) |
 | `state.get` | `{types?, when?}` | `{states, unavailable?, holds?}` | sample the §11 state predicates. `states` maps each requested type (default: every `device.state_types` entry) to its current state object (shapes in §11 "State predicates & sampling"); a type that cannot be sampled lands in `unavailable` as its typed failure code, never failing the batch. `when` — a §11 predicate array — adds `holds`, evaluated by the same code path that gates fires, so a gate is testable from Emacs before it ships; a malformed `when` → `cap-failed` |
+| `trigger.fire` | `{id}` | — | the Emacs-initiated twin of the §5 `trigger.fire` builtin: fires the `manual` registration `id` through the full trigger pipeline with fire data `{source: "emacs"}`. An unknown id or a non-`manual` type → `cap-failed` |
 
 ## 11. Device triggers (optional)
 
@@ -938,6 +947,7 @@ its push against that report and skips what this companion can't host.
 | `boot` | — | `{}` | fires once per boot from the boot receiver; typically `policy: "queue"` or `"wake"` |
 | `timezone.changed` | — | `{tz}` | the new zone id |
 | `package` | `{event?, package?}` — `added` \| `removed` | `{event, package}` | update-replacing broadcasts are filtered out |
+| `manual` | — | `{source}` | fires only via the `trigger.fire` builtin (§5) or capability (§10), never from device state; nothing is armed for it — zero standing cost. `source` = `tap` \| `emacs`. A removed row cannot fire: replace-set semantics for free |
 | `network` | `{event?, transport?}` — `available` \| `lost`; `wifi` \| `cellular` \| `ethernet` \| `vpn` \| `bluetooth` | `{event, transport?}` | the default-network callback (permission-free); fires once per network gain/loss |
 | `wifi.enabled` | `{enabled?}` | `{enabled}` | the Wi-Fi *adapter* state — enabled/disabled edges only, transitional states are not edges. Distinct from `network` (radio on ≠ connected) and from the reserved `wifi.ssid`. Install-time `ACCESS_WIFI_STATE`, no runtime grant |
 | `bluetooth.enabled` | `{enabled?}` | `{enabled}` | the Bluetooth *adapter* state, same edge discipline. Install-time legacy `BLUETOOTH` (≤ API 30) only; a device without Bluetooth simply never fires it. Distinct from the reserved `bluetooth.device` |

@@ -836,6 +836,13 @@
       ],
       "optional": []
     },
+    "trigger.fire": {
+      "required": [
+        "builtin",
+        "id"
+      ],
+      "optional": []
+    },
     "clipboard.copy": {
       "required": [
         "builtin",
