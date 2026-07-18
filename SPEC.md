@@ -305,6 +305,15 @@ UI: the app-launch picker, the permissions screen — jetpacs-device.el).
   `surface` names the surface the widget lives on, so ids need be
   unique only per surface; when absent (an older companion) the client
   treats `id` as global — the pre-amendment shape.
+- **Flush-before-dispatch (normative, since 1.25.0).** A companion that
+  debounces `state.changed` publishing (typing pauses) must flush every
+  diverged stateful-node value — as ordinary `state.changed` events, in
+  the same delivery order — *before* it delivers any `event.action`. A
+  handler that reads the UI-state store therefore never observes a value
+  staler than the interaction that invoked it. A companion that publishes
+  un-debounced satisfies this trivially; a pre-1.25.0 companion may
+  deliver an action ahead of a pending debounce, which clients tolerated
+  with grace-waits.
 
 **Companion-local builtins.** An action object with `builtin` instead of
 `action` is handled on-device and works with Emacs dead:
@@ -447,14 +456,16 @@ message was computed against.
 ```
 companion → client   event.action {action: "edit.open",     args: {file, session, text}}   seed / reseed (seq 0)
 companion → client   event.action {action: "edit.delta",    args: {file, session, seq, start, del, text, len}}
-companion → client   event.action {action: "edit.caret",    args: {file, session, seq, cursor}}
+companion → client   event.action {action: "edit.caret",    args: {file, session, seq, cursor, sel_start?, sel_end?}}
 companion → client   event.action {action: "edit.close",    args: {file, session}}
 companion → client   event.action {action: "edit.complete", args: {file, session, seq, request_id, cursor}}   pure query
+companion → client   event.action {action: "edit.command",  args: {file, session, seq, cursor, sel_start?, sel_end?, command?}}
 client → companion   completions.show {id, request_id, prefix, candidates: [{label, annotation?, insert?}]}
 client → companion   diagnostics.show {id, session, seq, diags: [{beg, end, type, text}]}
 client → companion   eldoc.show       {id, session, text}
 client → companion   fontify.show     {id, session, seq, runs}
 client → companion   edit.resync      {id, session}
+client → companion   edit.apply       {id, session, seq, cursor, start?, del?, text?, len?, sel_start?, sel_end?}
 ```
 
 In the client → companion frames `id` is the editor id (the synced
@@ -467,6 +478,50 @@ session stale and sends one `edit.resync`, which the companion answers
 with a fresh `edit.open`. Invariant: **wrong state can only ever cause a
 missing feature, never a wrong edit** — the shadow never writes to disk,
 and completion insertion happens companion-side.
+
+**Point and region.** `edit.caret` may carry `sel_start`/`sel_end`
+(present only when the companion's selection is non-collapsed;
+`sel_start ≤ sel_end`, and `cursor` equals one of the two ends — the
+client derives the mark as the other end). A matched caret report is the
+client's licence to persist point/selection as *best-effort* session
+context; it trails the companion's debounce, so anything that needs
+exact coordinates carries them in its own frame instead.
+
+**Commands at point (`edit.command`).** Runs a client-side command in
+the session's buffer with real point and mark. The frame carries the
+companion's exact `cursor` and selection; `command` names the command,
+and an *omitted* `command` asks the client to prompt the user for one
+through its bridged chooser (M-x scoped to the editor — the user, not
+the wire, picks the command; same posture as §5's escape hatch). The
+gate is `edit.complete`'s: session/seq must match the live sync state
+exactly, else the client answers with one `edit.resync` and runs
+nothing. Prompts raised by the command ride the client's ordinary
+dialog bridge.
+
+**Server-authored edits (`edit.apply`).** The reverse of `edit.delta`,
+in two shapes distinguished by the splice keys:
+
+- *Text-changing* — `start`/`del`/`text`/`len` present, same splice
+  semantics as `edit.delta`; `seq` is the **new** sequence number (the
+  client bumps its session seq when emitting, making the seq stream
+  two-writer). The companion applies iff `seq` is exactly one past its
+  own, **and** its current editor text still equals the last state it
+  synced, **and** no IME composition is active — any failed gate drops
+  the frame silently. A drop is safe by construction: the client and
+  companion now disagree on seq, so the next delta round trips the
+  ordinary resync recovery. A race with typing therefore loses the
+  command's *result*, never corrupts text — the invariant above,
+  extended to the reverse direction.
+- *Move-only* — splice keys absent, `seq` unchanged (equals the
+  companion's current): the command moved point or changed the region
+  without editing. Same gates; `cursor`/`sel_start`/`sel_end` position
+  the companion's caret and selection.
+
+The companion should apply a text-changing frame as a single undoable
+edit, so one command is one undo step — undoing it then emits an
+ordinary `edit.delta` back, needing no special casing. `diagnostics.show`
+and `fontify.show` frames that follow an apply are stamped with the new
+seq.
 
 A candidate's optional `insert` is what lands in the buffer when it
 differs from the display `label` (a wikilink chip shows `[[Title` but
@@ -614,23 +669,36 @@ Summary by family:
   `fill_fraction`-sized cells — there is no dedicated grid node.
 - **Input**: `button` (`variant` — `filled` (the default) / `tonal` /
   `outlined` / `text`), `icon_button`, `chip`, `assist_chip`, `menu`,
-  `checkbox`, `switch`, `slider` (continuous value; `min`/`max` default
-  0/1, `steps` for discrete; dispatches `on_change` once on release with
-  the value injected), `text_input` (optional `password` masks entry and
+  `checkbox` / `switch` (report every flip as `state.changed`; the
+  optional `on_change` additionally dispatches with the new boolean
+  injected as `value` — declared since format 2, dispatched by the
+  reference companion since 1.25.0), `slider` (continuous value;
+  `min`/`max` default 0/1, `steps` for discrete; dispatches `on_change`
+  once on release with the value injected), `text_input` (optional `password` masks entry and
   requests a password keyboard — such values must not be logged or
   retained; optional `keyboard` picks the IME from the closed enum
   `number`/`decimal`/`email`/`phone`/`uri`, unknown or absent → text,
-  `password` wins), `enum_list` (single/multi select, optional free-add),
+  `password` wins; optional `autofocus` — since 1.25.0 — grabs focus and
+  raises the IME on first composition under a new `id`, same-id re-pushes
+  never re-steal; optional `clear_on_submit` — since 1.25.0 — resets the
+  field in place after the submit dispatch, preserving the composition
+  and so focus and the keyboard, and reports the cleared value as
+  `state.changed`), `enum_list` (single/multi select, optional free-add),
   `date_button` / `time_button` (native pickers),
   `editor` (full editor: save/undo header, optional `syntax`, gutter
   `line_numbers`, `complete` for the completion strip, `chromeless`,
-  `publish_state`, and a server-chosen `toolbar` — a string naming a
-  host-registered native toolbar, or an array of data-driven toolbar
-  items; see "Editor toolbars" below). Any node in this family may
-  carry `enabled` (default true): false renders the platform disabled
-  affordance and suppresses every dispatch from the control (`editor`
-  keeps its own `read_only` instead). Negotiated by §3's
-  `can_disable` — a client never emits it toward a companion that
+  `publish_state`, optional `autofocus` — since 1.25.0, as on
+  `text_input`; optional `on_enter` — since 1.25.0 — an action the IME's
+  Enter dispatches with the full buffer injected as `value` INSTEAD of
+  inserting a newline, the default keyboard-hide deliberately skipped so
+  chained entry keeps the IME up (a literal newline still comes from a
+  hardware Enter or a toolbar snippet); and a server-chosen `toolbar` — a
+  string naming a host-registered native toolbar, or an array of
+  data-driven toolbar items; see "Editor toolbars" below). Any node in
+  this family may carry `enabled` (default true): false renders the
+  platform disabled affordance and suppresses every dispatch from the
+  control (`editor` keeps its own `read_only` instead). Negotiated by
+  §3's `can_disable` — a client never emits it toward a companion that
   does not announce it.
 - **Visualization** (the ladder): `chart` — data-driven, the client emits
   `series` of `points` and picks a `kind` (`line`/`bar`/`area`/`sparkline`);

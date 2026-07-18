@@ -1,14 +1,6 @@
 {
-  "contract_format": 4,
-  "error_codes": [
-    "proto-version",
-    "spec-invalid",
-    "auth-failed",
-    "cap-unsupported",
-    "cap-permission",
-    "cap-failed"
-  ],
-  "reference_api_version": "1.25.0",
+  "contract_format": 3,
+  "reference_api_version": "1.27.0",
   "protocol_version": 1,
   "spec_version": "1.0-rc",
   "node_types": [
@@ -58,22 +50,7 @@
       "optional": [
         "scroll_here",
         "dialog_style",
-        "key",
-        "pad",
-        "width",
-        "height",
-        "min_width",
-        "max_width",
-        "min_height",
-        "max_height",
-        "fill_fraction",
-        "aspect_ratio",
-        "bg",
-        "corner",
-        "border",
-        "alpha",
-        "clip",
-        "align_self"
+        "key"
       ]
     },
     "text": {
@@ -106,7 +83,6 @@
       "optional": [
         "spacing",
         "align",
-        "arrange",
         "scroll",
         "weight",
         "fill"
@@ -118,9 +94,7 @@
       ],
       "optional": [
         "spacing",
-        "run_spacing",
-        "arrange",
-        "align"
+        "run_spacing"
       ]
     },
     "column": {
@@ -130,7 +104,6 @@
       "optional": [
         "spacing",
         "align",
-        "arrange",
         "scroll",
         "weight",
         "fill"
@@ -171,10 +144,7 @@
       "required": [
         "children"
       ],
-      "optional": [
-        "spacing",
-        "content_padding"
-      ]
+      "optional": []
     },
     "spacer": {
       "required": [],
@@ -355,8 +325,7 @@
       ],
       "optional": [
         "icon",
-        "padding",
-        "enabled"
+        "padding"
       ]
     },
     "button": {
@@ -368,8 +337,7 @@
         "icon",
         "variant",
         "weight",
-        "padding",
-        "enabled"
+        "padding"
       ]
     },
     "icon_button": {
@@ -380,8 +348,7 @@
       "optional": [
         "content_description",
         "padding",
-        "badge",
-        "enabled"
+        "badge"
       ]
     },
     "chip": {
@@ -392,8 +359,7 @@
         "on_tap",
         "selected",
         "icon",
-        "padding",
-        "enabled"
+        "padding"
       ]
     },
     "assist_chip": {
@@ -403,8 +369,7 @@
       "optional": [
         "on_tap",
         "icon",
-        "padding",
-        "enabled"
+        "padding"
       ]
     },
     "badge": {
@@ -434,8 +399,9 @@
         "syntax",
         "password",
         "keyboard",
-        "padding",
-        "enabled"
+        "autofocus",
+        "clear_on_submit",
+        "padding"
       ]
     },
     "editor": {
@@ -445,12 +411,14 @@
       "optional": [
         "value",
         "on_save",
+        "on_enter",
         "read_only",
         "syntax",
         "line_numbers",
         "complete",
         "chromeless",
         "publish_state",
+        "autofocus",
         "toolbar"
       ]
     },
@@ -462,8 +430,7 @@
         "checked",
         "label",
         "on_change",
-        "padding",
-        "enabled"
+        "padding"
       ]
     },
     "switch": {
@@ -474,8 +441,7 @@
         "checked",
         "label",
         "on_change",
-        "padding",
-        "enabled"
+        "padding"
       ]
     },
     "enum_list": {
@@ -488,8 +454,7 @@
         "multi_select",
         "allow_add",
         "on_change",
-        "padding",
-        "enabled"
+        "padding"
       ]
     },
     "date_button": {
@@ -498,8 +463,7 @@
         "on_pick"
       ],
       "optional": [
-        "value",
-        "enabled"
+        "value"
       ]
     },
     "time_button": {
@@ -508,8 +472,7 @@
         "on_pick"
       ],
       "optional": [
-        "value",
-        "enabled"
+        "value"
       ]
     },
     "slider": {
@@ -521,8 +484,7 @@
         "value",
         "min",
         "max",
-        "steps",
-        "enabled"
+        "steps"
       ]
     },
     "scaffold": {
@@ -579,9 +541,7 @@
       "optional": [
         "protocol",
         "server",
-        "device",
-        "input_state",
-        "can_disable"
+        "device"
       ]
     },
     "ack": {
@@ -618,7 +578,7 @@
         "spec"
       ],
       "optional": [
-        "stale_after_s",
+        "ttl_s",
         "stale_spec",
         "current_view"
       ]
@@ -649,9 +609,7 @@
         "id",
         "value"
       ],
-      "optional": [
-        "surface"
-      ]
+      "optional": []
     },
     "queue.replay": {
       "direction": "client",
@@ -764,6 +722,23 @@
       ],
       "optional": []
     },
+    "edit.apply": {
+      "direction": "client",
+      "required": [
+        "id",
+        "session",
+        "seq",
+        "cursor"
+      ],
+      "optional": [
+        "start",
+        "del",
+        "text",
+        "len",
+        "sel_start",
+        "sel_end"
+      ]
+    },
     "capability.invoke": {
       "direction": "client",
       "required": [
@@ -795,6 +770,7 @@
     "on_change",
     "on_submit",
     "on_save",
+    "on_enter",
     "on_pick",
     "on_reorder",
     "on_refresh",
@@ -815,7 +791,6 @@
     "args",
     "when_offline",
     "dedupe",
-    "ttl_s",
     "confirm"
   ],
   "offline_policies": [
@@ -833,7 +808,6 @@
         "args",
         "when_offline",
         "dedupe",
-        "ttl_s",
         "confirm"
       ]
     },
@@ -841,13 +815,6 @@
       "required": [
         "builtin",
         "view"
-      ],
-      "optional": []
-    },
-    "trigger.fire": {
-      "required": [
-        "builtin",
-        "id"
       ],
       "optional": []
     },
@@ -870,7 +837,8 @@
       "snippet",
       "line",
       "on_tap",
-      "menu"
+      "menu",
+      "command"
     ],
     "placements": [
       "cursor",
