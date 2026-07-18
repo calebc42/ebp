@@ -781,7 +781,8 @@ capability.result    {ok, result?}     companion → client (reply)
                        "receive_sms": false, "read_phone_state": false,
                        "read_call_log": false},
              "trigger_types": ["airplane", "battery.level", "boot", "..."],
-             "state_types": ["airplane", "battery.level", "headset", "..."]}
+             "state_types": ["airplane", "battery.level", "headset", "..."],
+             "trigger_unavailable": {"sms.received": "receive_sms"}}
   ```
 
   `caps` is the invocable capability set. `perms` reports the runtime
@@ -797,7 +798,13 @@ capability.result    {ok, result?}     companion → client (reply)
   `state_types` (also under the `triggers` grant) is the
   state-predicate catalog — what a §11 `when` gate may reference and
   `state.get` can sample; the client-side rule it drives is normative
-  in §11's `when` bullet.
+  in §11's `when` bullet. `trigger_unavailable` (present only when
+  non-empty) maps each *supported but currently unarmable* trigger
+  type to the `device.perms` key blocking it — the client's
+  "needs permission" affordance and grant deep-link. It never changes
+  push discipline: the client still pushes such rows, and the
+  companion stores them and arms them once the permission is granted
+  (the existing, correct degrade).
 
 - **Trust model.** This flows in the already-trusted direction: the
   post-handshake client drives notifications, reminders, and dialogs,
@@ -927,6 +934,14 @@ triggers.set   {triggers: [{id, type, params?, when?, policy?, dedupe?,
   `true`). The `cap` name itself never interpolates — capability
   selection is not data-driven. There is no escape mechanism: a literal
   `${id}` in authored text is unrepresentable, as in §9.
+
+**Revocation while armed (normative).** Revoking a runtime permission
+kills the companion process; on restart, arming skips receivers it may
+no longer register (with a log) and the affected predicates fail
+closed — a revoked permission can silence a rule, never fire it wrong.
+The next welcome reports the type in `device.trigger_unavailable`
+(§10), which is how the client learns to surface "needs permission"
+against the still-registered row.
 
 ### Trigger-type catalog
 
