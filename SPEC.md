@@ -203,6 +203,22 @@ action object (below) are author-side policy: the companion consumes
 the queue trio when the event is queued, carries `confirm` without ever
 interpreting it, and echoes none of them in the delivered frame.
 
+**Action-object growth (normative).** A companion **ignores unknown
+keys on an action object** and echoes none of them — whatever an
+author writes there, the delivered `event.action` shape stays exactly
+the `kind_schema` shape. (This codifies the tolerance `confirm`
+already leaned on, amendment #13.) The license is deliberately narrow:
+a key added this way must be *cosmetic* (ignoring it costs polish,
+like §9's `badge`) or *rate-shaping* (ignoring it changes timing,
+never what happens). A **constraining** key — one an old companion
+would over-act by ignoring — must never ride as a plain key: it ships
+only together with its own positive-knowledge report in the welcome,
+at whatever granularity the field needs (as `when` shipped with
+`device.state_types`, amendment #5), plus the client rule to skip
+emitting it toward a companion that does not report it. The §11
+`when`-strip rationale is the template: a silently weakened intent is
+worse than a skipped feature.
+
 **The allowlist principle (normative).** An `action` is a *name* the
 client explicitly registered a handler for; `args` are plain data the
 handler validates. The wire must never carry code, command names to
