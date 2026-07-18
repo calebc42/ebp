@@ -948,6 +948,7 @@ its push against that report and skips what this companion can't host.
 | `timezone.changed` | — | `{tz}` | the new zone id |
 | `package` | `{event?, package?}` — `added` \| `removed` | `{event, package}` | update-replacing broadcasts are filtered out |
 | `manual` | — | `{source}` | fires only via the `trigger.fire` builtin (§5) or capability (§10), never from device state; nothing is armed for it — zero standing cost. `source` = `tap` \| `emacs`. A removed row cannot fire: replace-set semantics for free |
+| `state.edge` | `{when: [predicate, …], edge?}` | `{holds, edge}` | the level→edge bridge — any state conjunction becomes an event source; see **Tracked-state edges** below |
 | `network` | `{event?, transport?}` — `available` \| `lost`; `wifi` \| `cellular` \| `ethernet` \| `vpn` \| `bluetooth` | `{event, transport?}` | the default-network callback (permission-free); fires once per network gain/loss |
 | `wifi.enabled` | `{enabled?}` | `{enabled}` | the Wi-Fi *adapter* state — enabled/disabled edges only, transitional states are not edges. Distinct from `network` (radio on ≠ connected) and from the reserved `wifi.ssid`. Install-time `ACCESS_WIFI_STATE`, no runtime grant |
 | `bluetooth.enabled` | `{enabled?}` | `{enabled}` | the Bluetooth *adapter* state, same edge discipline. Install-time legacy `BLUETOOTH` (≤ API 30) only; a device without Bluetooth simply never fires it. Distinct from the reserved `bluetooth.device` |
@@ -959,6 +960,31 @@ its push against that report and skips what this companion can't host.
 batch; each will document its runtime-permission behavior here
 (SSID needs fine location — degrade to `network`'s transport-only
 matching when ungranted, never fire garbage).
+
+**Tracked-state edges.** A `state.edge` registration turns any state
+conjunction into an event source. `params.when` is a predicate list in
+the *exact* `when` vocabulary above — same validation, same evaluation,
+so the two vocabularies can never fork — and the row fires when the
+ANDed conjunction's truth **flips** in the declared direction:
+`edge` is `rise` (false → true, the default), `fall`, or `both`; fire
+data is `{holds, edge}`. The trackable subset is `device.state_types`
+minus `time.window` and `calendar.event` — exclusions that cost
+nothing, since a time-window edge is a `time` trigger at the boundary
+and a calendar edge is the `calendar.event` type already; a set whose
+`state.edge` row references an untrackable or unknown predicate type
+is rejected whole, like any malformed gate. The first evaluation at
+arm time **seeds silently**: re-arming and reboots never fire, and a
+flip missed while unarmed self-heals at the next driving event. A
+row-level `when` remains legal on a `state.edge` row with its usual
+meaning — an additional gate checked at fire time; the tracked
+conjunction lives only in `params.when`, and an author using the same
+predicate type in both is probably confused (clients should warn).
+**Client rule (normative):** push a `state.edge` row only when every
+`params.when` predicate type appears in the session's
+`device.state_types`; otherwise skip the whole row — the `when`-strip
+rationale, verbatim. (Named `state.edge`, never `state.changed`: that
+kind is §5's widget-input frame, and *edge* is the precise word — this
+is a level→edge bridge.)
 
 ### State predicates & sampling
 
