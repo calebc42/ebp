@@ -110,7 +110,8 @@ def check_payload(kind: str, payload: dict, path: str):
 
 
 def main() -> int:
-    for field in ("contract_format", "protocol_version", "spec_version"):
+    for field in ("contract_format", "protocol_version", "spec_version",
+                  "error_codes"):
         if field not in contract:
             problems.append(f"contract.json: missing `{field}`")
 

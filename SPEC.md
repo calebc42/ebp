@@ -67,7 +67,13 @@ answered with a bare `ack`; a sender that needs the reply keeps its own
 pending map keyed by `id`. Unknown `kind`s must not kill the connection —
 log and continue (this is the forward-compat rule).
 
-Errors travel as `kind: "error"` with `{code, detail}`.
+Errors travel as `kind: "error"` with `{code, detail}`. The `code`
+vocabulary is machine-checked: [`contract.json`](contract.json)'s
+`error_codes` enumerates it — `proto-version`, `spec-invalid`, and
+`auth-failed` from the envelope and handshake, plus §10's
+`cap-unsupported`/`cap-permission`/`cap-failed`. A conforming
+implementation emits no code outside the list; growing the list is an
+ordinary amendment.
 
 ## 3. Handshake and pairing auth
 
