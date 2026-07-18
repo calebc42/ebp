@@ -50,7 +50,22 @@
       "optional": [
         "scroll_here",
         "dialog_style",
-        "key"
+        "key",
+        "pad",
+        "width",
+        "height",
+        "min_width",
+        "max_width",
+        "min_height",
+        "max_height",
+        "fill_fraction",
+        "aspect_ratio",
+        "bg",
+        "corner",
+        "border",
+        "alpha",
+        "clip",
+        "align_self"
       ]
     },
     "text": {
@@ -83,6 +98,7 @@
       "optional": [
         "spacing",
         "align",
+        "arrange",
         "scroll",
         "weight",
         "fill"
@@ -94,7 +110,9 @@
       ],
       "optional": [
         "spacing",
-        "run_spacing"
+        "run_spacing",
+        "arrange",
+        "align"
       ]
     },
     "column": {
@@ -104,6 +122,7 @@
       "optional": [
         "spacing",
         "align",
+        "arrange",
         "scroll",
         "weight",
         "fill"
@@ -144,7 +163,10 @@
       "required": [
         "children"
       ],
-      "optional": []
+      "optional": [
+        "spacing",
+        "content_padding"
+      ]
     },
     "spacer": {
       "required": [],

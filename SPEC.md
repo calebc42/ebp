@@ -328,6 +328,16 @@ usually mutated state the cached views no longer reflect).
 | `reminders.set`                   | → comp.   | `{owner?, reminders: [{id, title, body, at_ms}]}` — **replaces** only `owner`'s set (blank/absent = the unowned bucket), so cancelled items never fire stale and coexisting apps never cancel each other; the companion persists each owner's set across reboots | `reminders.owner` for scoping |
 | `theme.set`                       | → comp.   | `{dark, colors, syntax}` to mirror the client's theme, or `{base}` (no `colors`) to force one of the companion's own schemes | `theme` |
 
+**Theme palette roles.** `theme.set`'s `colors` maps Material scheme
+role names to hex — the reference client pushes `primary`,
+`on_primary`, `primary_container`, `on_primary_container`, the same
+quartet for `secondary`, `tertiary`, and `error`, plus `background`,
+`on_background`, `surface`, `on_surface`, `surface_variant`,
+`on_surface_variant`, and `outline`. The palette may also carry
+`success` and `warning`; a companion whose pushed palette lacks them
+falls back to its built-in pair. These role names are the color
+vocabulary §9 accepts wherever a color is authored.
+
 A `dialog.show` spec's **root node** may carry `dialog_style`:
 `"sheet"` / `"sheet_full"` render the same tree as a modal bottom sheet
 (collapsed / fully expanded — the native idiom for pickers and action
@@ -478,15 +488,57 @@ optional keys per type, plus the `"*"` row of keys legal on any node)
 and the frame-kind schema (`kind_schema`: sender direction and payload
 keys per kind) — the machine-readable form of this section and of the
 frame sketches in §§2–8, 10–11, consumed by both conformance suites.
+
+**Universal node attributes.** Beyond `key` (the lazy-list
+reconciliation identity), `scroll_here`, and `dialog_style`, any node
+may carry the box-model set: `pad` — per-side padding
+`{start?, top?, end?, bottom?, horizontal?, vertical?}` in dp, a
+specific side winning over its axis shorthand (the older per-node
+scalar `padding` keeps its meaning; `pad` wins where both appear) —
+`width`/`height`/`min_width`/`max_width`/`min_height`/`max_height`
+(dp), `fill_fraction` (0–1 of the parent's width), `aspect_ratio`
+(width ÷ height), `bg` (a color filled behind the node, clipped to its
+corner shape), `corner` (dp, or `{tl, tr, bl, br}` per-corner — the one
+shape that `bg`, `border`, and `clip` share; on `surface` a numeric
+`corner` overrides the `shape` enum, whose `circle` has no corner
+equivalent and survives), `border` (`{width, color}`), `alpha` (0–1
+opacity), and `clip` (clip children to the corner shape). Application
+order: corner → clip → bg → border. On a row/column child,
+`align_self` (the parent's own `align` vocabulary) overrides
+cross-axis placement, the way per-child `weight` already overrides its
+share. All of these are cosmetic in the sense of §5's growth rule — a
+companion that predates one renders the prior look, content intact —
+with one authoring rule: never *hide* a load-bearing control with
+`alpha`, because an older companion shows it at full strength.
+
+**Color values.** Wherever this section accepts a color, the value is
+a hex string (`#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`) or a **theme
+role name** from the §7 palette (`primary`, `on_surface`,
+`surface_variant`, `error`, `success`, `warning`, …). Roles follow the
+live theme; hex is frozen ink — prefer roles. This supersedes the
+older hex-only wording for `rich_text`/`table` span colors (pure
+widening; hex stays valid).
+
 Summary by family:
 
-- **Content**: `text` (style/color/syntax/selectable), `rich_text` +
-  styled `spans` (emphasis, `color`/`bg` hex overrides, `mono`, tap
-  links), `icon`, `image`, `date_stamp`, `divider`, `section_header`,
-  `empty_state`, `progress`.
-- **Layout**: `row`, `column` (both take `spacing` in dp between children
-  and `align` for the cross axis — row `top`/`center`/`bottom`, column
-  `start`/`center`/`end`), `flow_row`, `lazy_column` (a child may
+- **Content**: `text` (`style` — `body` (the default) / `title` /
+  `headline` / `caption` / `label` / `mono`, unknown → `body`; plus
+  `color`, `syntax`, `selectable`, `max_lines`), `rich_text` + styled
+  `spans` (emphasis, `color`/`bg` overrides — any §9 color value; a
+  span `bg` colors its own text run, distinct from the node-level
+  `bg` — `mono`, tap links), `icon`, `image`, `date_stamp`, `divider`, `section_header`,
+  `empty_state`, `progress` (`variant` `circular` (the default) /
+  `linear`; a missing `value` renders indeterminate).
+- **Layout**: `row`, `column` (both take `spacing` in dp between
+  children; `align` for the cross axis — row `top`/`center`/`bottom`
+  plus `baseline`, column `start`/`center`/`end` — and `arrange` for
+  the main axis: `start`/`center`/`end`/`space_between`/
+  `space_around`/`space_evenly`. An `arrange` other than `start`
+  distributes the leftover space and takes precedence over `spacing`),
+  `flow_row` (also takes `arrange`, and `align` for items within a
+  wrapped run), `lazy_column` (takes `spacing` in dp between rows and
+  `content_padding` — dp or a `pad` object — inside the scrollport; a
+  child may
   carry `scroll_here: true` — the list scrolls to it on first show and
   whenever its index changes, e.g. a REPL input row pushed down by new
   output; an update that leaves the index unchanged never disturbs the
@@ -496,8 +548,13 @@ Summary by family:
   removals, and reorders preserve the row's client-side state, scroll
   anchoring, and item animation. Additive: an absent `key` and a
   companion that predates it both degrade to id/position keying),
-  `box` (weight / alignment / tap), `surface`
-  (tonal container), `card`, `spacer`, `collapsible` (folds on-device),
+  `box` (children stack in z-order; `alignment` places them — a
+  compound of `top`/`center`/`bottom` × `start`/`center`/`end`, e.g.
+  `top_start` (the default), `center`, `bottom_end`; an unknown value
+  falls back to `top_start`), `surface`
+  (tonal container; `shape` `rounded`/`rounded_small`/`circle`, absent
+  → rectangular; author-set `color` and `elevation`), `card`, `spacer`,
+  `collapsible` (folds on-device),
   `reorderable_list` (drag to reorder, reports via `on_reorder`),
   `card` additionally takes `swipe_start` / `swipe_end` — per-side swipe
   actions `{icon, label, color?, on_trigger}`: dragging reveals the
@@ -532,7 +589,8 @@ Summary by family:
   (`fit`/`crop`/`fill`). Absent keys preserve the prior behaviour. A
   fixed-column grid is composed as a `flow_row` of `width`- or
   `fill_fraction`-sized cells — there is no dedicated grid node.
-- **Input**: `button`, `icon_button`, `chip`, `assist_chip`, `menu`,
+- **Input**: `button` (`variant` — `filled` (the default) / `tonal` /
+  `outlined` / `text`), `icon_button`, `chip`, `assist_chip`, `menu`,
   `checkbox`, `switch`, `slider` (continuous value; `min`/`max` default
   0/1, `steps` for discrete; dispatches `on_change` once on release with
   the value injected), `text_input` (optional `password` masks entry and
