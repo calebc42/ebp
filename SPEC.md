@@ -75,7 +75,7 @@ Errors travel as `kind: "error"` with `{code, detail}`.
 Emacs → companion   session.hello    {protocol, client, features?, wants: [capability...]}
 companion → Emacs   auth.challenge   {nonce: SNONCE}
 Emacs → companion   auth.response    {nonce: CNONCE, mac}
-companion → Emacs   session.welcome  {server_proof, granted, node_types, device?, surfaces, queued_events, input_state?, protocol?, server?}
+companion → Emacs   session.welcome  {server_proof, granted, node_types, device?, surfaces, queued_events, input_state?, can_disable?, protocol?, server?}
 ```
 
 The welcome's optional `protocol` (the companion's wire version) and
@@ -130,6 +130,15 @@ The welcome's optional `protocol` (the companion's wire version) and
   A companion with nothing to report omits it; a client that predates
   it ignores it — exactly the pre-amendment behavior, where offline
   drafts were lost.
+- **Control disabling.** A welcome carrying `can_disable: true`
+  declares that this companion honors §9's `enabled` key. The client
+  rule is skip-don't-emit: toward a welcome without it, a client must
+  omit `enabled` everywhere — and when the disabled state is
+  load-bearing, omit the control's action instead, since an
+  action-less control renders inert on every companion. This is the
+  §5 growth rule's constraining-key pattern in action: `enabled`
+  ships with its own channel because an old companion that ignored it
+  would leave the control live.
 - **Device report.** When `capabilities` is granted, the welcome carries
   a `device` object — the invocable capability names and the device
   permission map. See §10.
@@ -603,7 +612,12 @@ Summary by family:
   `line_numbers`, `complete` for the completion strip, `chromeless`,
   `publish_state`, and a server-chosen `toolbar` — a string naming a
   host-registered native toolbar, or an array of data-driven toolbar
-  items; see "Editor toolbars" below).
+  items; see "Editor toolbars" below). Any node in this family may
+  carry `enabled` (default true): false renders the platform disabled
+  affordance and suppresses every dispatch from the control (`editor`
+  keeps its own `read_only` instead). Negotiated by §3's
+  `can_disable` — a client never emits it toward a companion that
+  does not announce it.
 - **Visualization** (the ladder): `chart` — data-driven, the client emits
   `series` of `points` and picks a `kind` (`line`/`bar`/`area`/`sparkline`);
   the companion draws it animated and theme-coloured, dispatching

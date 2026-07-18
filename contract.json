@@ -347,7 +347,8 @@
       ],
       "optional": [
         "icon",
-        "padding"
+        "padding",
+        "enabled"
       ]
     },
     "button": {
@@ -359,7 +360,8 @@
         "icon",
         "variant",
         "weight",
-        "padding"
+        "padding",
+        "enabled"
       ]
     },
     "icon_button": {
@@ -370,7 +372,8 @@
       "optional": [
         "content_description",
         "padding",
-        "badge"
+        "badge",
+        "enabled"
       ]
     },
     "chip": {
@@ -381,7 +384,8 @@
         "on_tap",
         "selected",
         "icon",
-        "padding"
+        "padding",
+        "enabled"
       ]
     },
     "assist_chip": {
@@ -391,7 +395,8 @@
       "optional": [
         "on_tap",
         "icon",
-        "padding"
+        "padding",
+        "enabled"
       ]
     },
     "badge": {
@@ -421,7 +426,8 @@
         "syntax",
         "password",
         "keyboard",
-        "padding"
+        "padding",
+        "enabled"
       ]
     },
     "editor": {
@@ -448,7 +454,8 @@
         "checked",
         "label",
         "on_change",
-        "padding"
+        "padding",
+        "enabled"
       ]
     },
     "switch": {
@@ -459,7 +466,8 @@
         "checked",
         "label",
         "on_change",
-        "padding"
+        "padding",
+        "enabled"
       ]
     },
     "enum_list": {
@@ -472,7 +480,8 @@
         "multi_select",
         "allow_add",
         "on_change",
-        "padding"
+        "padding",
+        "enabled"
       ]
     },
     "date_button": {
@@ -481,7 +490,8 @@
         "on_pick"
       ],
       "optional": [
-        "value"
+        "value",
+        "enabled"
       ]
     },
     "time_button": {
@@ -490,7 +500,8 @@
         "on_pick"
       ],
       "optional": [
-        "value"
+        "value",
+        "enabled"
       ]
     },
     "slider": {
@@ -502,7 +513,8 @@
         "value",
         "min",
         "max",
-        "steps"
+        "steps",
+        "enabled"
       ]
     },
     "scaffold": {
@@ -560,7 +572,8 @@
         "protocol",
         "server",
         "device",
-        "input_state"
+        "input_state",
+        "can_disable"
       ]
     },
     "ack": {
