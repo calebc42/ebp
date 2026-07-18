@@ -75,7 +75,7 @@ Errors travel as `kind: "error"` with `{code, detail}`.
 Emacs → companion   session.hello    {protocol, client, features?, wants: [capability...]}
 companion → Emacs   auth.challenge   {nonce: SNONCE}
 Emacs → companion   auth.response    {nonce: CNONCE, mac}
-companion → Emacs   session.welcome  {server_proof, granted, node_types, device?, surfaces, queued_events, protocol?, server?}
+companion → Emacs   session.welcome  {server_proof, granted, node_types, device?, surfaces, queued_events, input_state?, protocol?, server?}
 ```
 
 The welcome's optional `protocol` (the companion's wire version) and
@@ -121,6 +121,15 @@ The welcome's optional `protocol` (the companion's wire version) and
   lost (fresh machine, deleted state) can raise it above the cache floor
   before pushing. `queued_events` is the number of offline events waiting
   for replay.
+- **Input snapshot.** The optional `input_state` maps each surface to
+  the widget values the user changed while disconnected —
+  `{surface: {id: value}}`, latest value only, no history (the §8
+  resync philosophy applied to widgets: after a gap, re-send current
+  state, never a keystroke log). It rides the welcome so the ordering
+  is structural: the client holds it before it can push anything (§6).
+  A companion with nothing to report omits it; a client that predates
+  it ignores it — exactly the pre-amendment behavior, where offline
+  drafts were lost.
 - **Device report.** When `capabilities` is granted, the welcome carries
   a `device` object — the invocable capability names and the device
   permission map. See §10.
@@ -210,7 +219,7 @@ User interactions reach the client as:
 
 ```
 event.action    {action, args?, surface?, revision_seen?, fields?, queued_at?}
-state.changed   {id, value}
+state.changed   {id, value, surface?}
 ```
 
 `surface` and `revision_seen` are the context the interaction happened
@@ -277,7 +286,10 @@ UI: the app-launch picker, the permissions screen — jetpacs-device.el).
 - `state.changed` carries widget state (text as typed, switch flips,
   multi-select values) keyed by widget `id`; the client mirrors these into
   a UI-state store its handlers read back. It is not an action and runs no
-  handler-side effects beyond per-id subscriptions.
+  handler-side effects beyond per-id subscriptions. An optional
+  `surface` names the surface the widget lives on, so ids need be
+  unique only per surface; when absent (an older companion) the client
+  treats `id` as global — the pre-amendment shape.
 
 **Companion-local builtins.** An action object with `builtin` instead of
 `action` is handled on-device and works with Emacs dead:
@@ -297,10 +309,14 @@ queued `event.action` frames in order and finishes with:
 queue.drained   {delivered, expired}
 ```
 
-The client should request replay only after it has absorbed the revision
-snapshot and pushed initial surfaces, so replayed events land on coherent
-state, and should re-push after the drain (replayed events usually
-mutated state the cached views no longer reflect).
+The client should request replay only after it has (1) absorbed the
+welcome — the revision snapshot *and* `input_state` (§3), mirrored into
+the UI-state store — and (2) pushed initial surfaces, which SHOULD
+reflect absorbed draft values in their input nodes' `value` keys, so a
+reconnect push does not wipe an on-device draft. Replayed events then
+land on coherent state: a replayed action's handler reads the store the
+user actually typed into. Re-push after the drain (replayed events
+usually mutated state the cached views no longer reflect).
 
 ## 7. Dialogs, toasts, pies, reminders
 

@@ -537,7 +537,8 @@
       "optional": [
         "protocol",
         "server",
-        "device"
+        "device",
+        "input_state"
       ]
     },
     "ack": {
@@ -605,7 +606,9 @@
         "id",
         "value"
       ],
-      "optional": []
+      "optional": [
+        "surface"
+      ]
     },
     "queue.replay": {
       "direction": "client",
