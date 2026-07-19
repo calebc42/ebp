@@ -1,5 +1,7 @@
 # EBP 2 — the Emacs Bridge Protocol on JSON-RPC 2.0 (draft)
 
+Spec: **2.0-draft** · Protocol: **2** · Contract: **format 5**
+
 **Status: the slop line.** This is the Claude-drafted reference rebuild, living
 on `ebp/slop-fork` by the same convention that names `jetpacs/slop-fork`: an
 LLM-written twin, deliberately labeled, kept as the quarry and the checking
@@ -12,10 +14,11 @@ Lineage note: the point/region vocabulary (the other lineage's amendment #14,
 `bbe835f`) is **not yet folded in** — it joins at the two-#14 reconciliation.
 
 Sketch policy: this draft rewrites only what the envelope swap touches
-(§§1–3 and the method table). Everything payload-level — surfaces, events,
-queue policy, widgets, capabilities, triggers, the growth rule — **carries
-unchanged** from 1.0-rc-as-amended and is incorporated by reference (§5),
-because that was the point of the layer stack: the constitution above the
+(§§1–3, the method table, and §5's overload rules — the layer v1 never
+wrote). Everything payload-level — surfaces, events, queue policy,
+widgets, capabilities, triggers, the growth rule — **carries unchanged**
+from 1.0-rc-as-amended and is incorporated by reference (§6), because
+that was the point of the layer stack: the constitution above the
 envelope survives the envelope's replacement.
 
 ## 1. The layer stack
@@ -63,6 +66,26 @@ each replaced by something structurally better (see the method table, §4).
 **JSON-RPC batch arrays are prohibited** — a batch complicates every
 dispatcher for zero benefit on a local socket (kit decision 5.4, adopted).
 
+**The frame cap.** A frame's body may not exceed **4 MiB** (this draft's
+default; negotiating per-side caps at the handshake is open decision 6).
+The cap is enforced twice, and the two halves are different rules:
+
+- *Sender side:* a frame that would exceed the cap is refused locally —
+  dropped with a local log, never sent. An implementation that can shrink
+  the frame (paginate a list, elide a subtree) should; one that cannot
+  must prefer a missing update to an oversized frame.
+- *Receiver side:* `Content-Length` framing makes an oversized frame
+  skippable — read the header, discard exactly N bytes, report
+  `1400 frame-too-large` on the `log.error` channel (§2.3), and keep the
+  connection. Newline framing could not skip without scanning every byte;
+  this cheap refusal is one of the dividends of renting the framing.
+  The discarded frame is never parsed, so nothing it contained can be
+  answered: an oversized *request* dies unanswered on the receiver side,
+  which is why the sender-side half is normative and not advice.
+
+Unbounded buffering of a frame body is the resource shape of failing
+open; a conforming receiver never does it (§5).
+
 ### 2.3 Dispatch rules (normative)
 
 - **Ids are per-connection**, and every outstanding request dies with the
@@ -79,9 +102,12 @@ dispatcher for zero benefit on a local socket (kit decision 5.4, adopted).
   are `#'ignore`, so an unhandled request returns a success-shaped `null`,
   which is fail-*open*. Both halves of this rule are the dispatcher author's
   job.
-- **Unsolicited faults** (a companion problem outside any request) ride a
-  `log.error` notification — the bare error frame is not resurrected
-  (kit 5.3, adopted).
+- **Unsolicited faults** (a receiver problem outside any request — a
+  malformed notification, an oversized frame that could not be parsed,
+  overload) ride a `log.error` notification whose params are an error
+  object minus the id: `{code, message, data?}`. The bare error frame is
+  not resurrected (kit 5.3, adopted). Primarily companion → Emacs; either
+  side may send it, and a receiver must at minimum log it.
 - **Cancellation.** `rpc.cancel {id}` (notification, either direction) asks
   the peer to abandon the outstanding request `id`; the peer still answers
   it, with error code `1301 request-cancelled` — a cancelled request is
@@ -113,6 +139,8 @@ sentinel meaning "no error" — it transmutes an error into a result,
 | 1202 | `proto-version` | protocol mismatch at hello |
 | 1203 | `auth-failed` | bad MAC |
 | 1301 | `request-cancelled` | the answer to a cancelled request |
+| 1400 | `frame-too-large` (+ `bytes`, `max`) | §2.2's receiver-side refusal; rides `log.error` (the frame was never parsed, so there is no id to answer) |
+| 1401 | `overloaded` | §5's bounded-queue exhaustion; rides `log.error`, then the connection closes |
 
 Growing this table is an ordinary amendment; the machine copy lives in the
 contract (v1 amendment #22's `error_codes`, renumbered to codes+kinds here).
@@ -179,7 +207,9 @@ Direction: C→ = Emacs sends; K→ = companion sends.
 **Notifications, Emacs → companion:** `surface.update` (revision-guarded
 idempotence *is* the ack — deliberately not a request), `surface.remove`,
 `theme.set`, `toast.show`, `pie_menu.show`, `pie_menu.dismiss`,
-`diagnostics.show`, `eldoc.show`, `fontify.show`, `rpc.cancel`.
+`diagnostics.show`, `eldoc.show`, `fontify.show`, `edit.apply` (the §8
+client→editor splice — omitted from this table's first draft, restored:
+it is a leg of the carried §8 sub-protocol), `rpc.cancel`.
 
 **Notifications, companion → Emacs:** `event.action` (taps,
 `trigger.fired`, `view.switched` — payloads of one method, not methods),
@@ -192,7 +222,93 @@ event-riders; they are protocol, not user intents — kit 2.4), `log.error`,
 existed; liveness, if ever needed, is a trivial self-correlating request or
 transport keepalive).
 
-## 5. Carried unchanged (incorporated by reference)
+### First-cut staging (reference status, 2026-07-19)
+
+The slop reference implements the envelope swap in two cuts, and this
+table is the *target*; what the first cut actually wires differs in three
+deliberate places, each an upgrade above the envelope that deserves its
+own change:
+
+1. `dialog.show` ships as a **notification** (node-tree params), and
+   `dialog.dismiss` survives as a notification beside `rpc.cancel`; dialog
+   answers keep riding `event.action` with the v1 prompt-correlation
+   vocabulary. The promotion to request-with-answer lands with the
+   prompt-bridge rework (open decision 2).
+2. The `edit.*` legs stay §5 event-riders and `completions.show` stays a
+   C→ notification carrying its hand-rolled `request_id` (open decision 4
+   resolved as "after the katas" for the first cut).
+3. `edit.resync` ships as a notification (open decision 5.1's
+   request-with-reseed variant waits for the same katas).
+
+Everything else is first-cut scope and wired: the §§1–3 shapes, framing,
+frame cap, dispatch rules, error objects, and two-request handshake, the
+§5 overload rules, and the remaining method table as printed —
+`reminders.set` and `triggers.set` included, promoted to requests.
+
+## 5. Overload behavior
+
+Any two programs joined by a pipe run at different speeds, and something
+must absorb the difference: a buffer grows, data is dropped, or the
+producer slows. TCP's flow control only defends the middle option-1
+territory — it counts bytes, kicks in megabytes late, and is blind to
+which frames still matter. The right overload behavior depends on the
+*semantics* of the traffic, which is exactly why the spec must assign it:
+undefined overload behavior always resolves to an accidental buffer or an
+accidental drop at 3 a.m. This section assigns it. The wire has three
+traffic classes, one rule each, plus two bounded-resource rules that
+apply everywhere.
+
+**1. Latest-wins traffic conflates.** `surface.update`, `theme.set`, and
+the seq-stamped annotations (`diagnostics.show`, `eldoc.show`,
+`fontify.show`) describe *current state*: a newer frame makes older ones
+worthless, officially — surfaces by the §4 revision guard, annotations by
+their §8 seq discard, the theme by replacement. So the overload response
+is to drop obsolete frames, and it is provably harmless:
+
+- *Sender:* at most one queued frame per conflation key (the surface id;
+  the annotation's editor id; the theme). If state changes again while a
+  frame waits, **replace** the queued frame — coalesce to latest, never
+  queue a second.
+- *Receiver:* a queued-but-unprocessed frame is discarded, unparsed where
+  framing allows, when a newer frame with the same key arrives.
+
+This is a conflated queue — obsolescence as backpressure, purchased by
+the revision-guard decision. v1 §8's seq-stamped annotations used the
+pattern without generalizing it; here it is doctrine.
+
+**2. Ordered traffic never conflates.** The editor legs (`edit.open`,
+`edit.delta`, `edit.caret`, `edit.close`, `edit.apply`) are
+order-dependent: dropping one corrupts everything after it. Their
+overload story is the one they were born with: deltas travel at human
+speed, a gap or length mismatch trips the §8 seq check, and one
+`edit.resync` reseeds. Conflating this class is a conformance violation.
+
+**3. Event traffic throttles at the source and dedupes in the queue.**
+`event.action` and `state.changed` carry user intent; none may be
+invented or reordered, and §5's flush-before-dispatch rule stands under
+any load. Rate-shaping is already in the vocabulary: `throttle_s` limits
+at the source, `dedupe` collapses queued repeats, `ttl_s` expires stale
+intent. Named here as the third class so no implementer mistakes events
+for conflatable state.
+
+**4. No unbounded buffering.** A conforming receiver bounds its inbound
+queue. Conflation makes latest-wins traffic occupy at most one slot per
+key, so a bounded queue starves only when a peer floods the classes that
+may not be dropped; a receiver that exhausts its bound reports
+`1401 overloaded` on `log.error` and closes the connection — outstanding
+requests die with it, cleanly, per §2.3. Failing closed at the connection
+level beats failing open at the process level. The frame cap (§2.2) is
+the same rule at single-frame granularity.
+
+**5. The free lag gauge.** Every `event.action` carries `revision_seen` —
+designed for staleness detection, it moonlights as backpressure telemetry
+at zero wire cost: when `revision_seen` persistently trails the sender's
+latest pushed revision for that surface, the receiver is drowning, and
+the sender SHOULD stretch its coalescing window (rule 1) until the gauge
+recovers. No new field, no control frames — the wire already says how far
+behind the screen is.
+
+## 6. Carried unchanged (incorporated by reference)
 
 From SPEC.md 1.0-rc as amended through #22, everything below the envelope:
 §4 surfaces (revisions, multi-view, `stale_after_s`/`stale_spec` semantics),
@@ -208,27 +324,36 @@ model is untouched: capability sets by request/grant, vocabularies by
 announced presence, never a version handshake — the model LSP converged on
 when it deleted its own (initialize.md:729-732).
 
-## 6. What guided what
+## 7. What guided what
 
 | decision | guide |
 |---|---|
 | capabilities-not-versions; property-level gating for constraining fields | LSP (and v1's own amendment #5) |
+| conflated queues for latest-wins traffic; obsolescence as backpressure | market-data conflation practice + v1's own §8 seq discards, promoted to doctrine |
+| skippable oversize frames as a framing dividend | Content-Length framing (decision #2) — a header names the bytes to discard |
 | null-result ≠ error; cancelled requests still conclude; reserved code ranges | LSP base protocol |
 | client-owns-truth → welcome carries the input snapshot | LSP `didOpen` ownership + LiveView form recovery (v1 #16) |
 | whole-snapshot surfaces + reserved keyed-list splice; closed effects vocabulary someday | LiveView (streams, JS commands) |
 | explicit-signal fail-closed dispatcher; -32601 hand-rolled; 32000/-1 landmines; outbound-data stash | jsonrpc.el v1.0.29, read not remembered |
 | manual/`state.edge`/`trigger_unavailable`; history & availability discipline | Easer + Termux harvests (v1 #19–#22) |
 
-## 7. Owner's open decisions (the hand line decides; the slop line only drafts)
+## 8. Owner's open decisions (the hand line decides; the slop line only drafts)
 
 1. Domain-tag retag `ebp1:` → `ebp2:` at the envelope swap, or keep (v1 #11
-   pattern either way).
-2. `rpc.cancel` as drafted vs keeping a semantic `dialog.dismiss` alias.
-3. The 1200-range numbering (this draft's invention — renumber freely).
+   pattern either way). The first-cut reference keeps `ebp1:`.
+2. `rpc.cancel` as drafted vs keeping a semantic `dialog.dismiss` alias
+   (the first cut stages this — see §4's staging note).
+3. The 1200-range numbering (this draft's invention — renumber freely;
+   1400-range likewise, added with §5).
 4. Whether `edit.*` promotion ships in the first rebuild cut or after the
-   §8 katas.
+   §8 katas (the first cut resolves this as "after" — §4 staging note).
 5. Contract shape for v2 (method table + direction + request/notification
-   classification as machine artifact — contract_format 5 territory).
+   classification as machine artifact — contract_format 5 territory; the
+   slop reference now generates a format-5 draft with `methods`,
+   `result` schemas, and `error_codes` — renumber or reshape freely).
+6. The frame cap: fixed 4 MiB default as drafted, or negotiated per side
+   at the handshake (a `max_frame_bytes` beside `wants` in the hello and
+   beside `granted` in the welcome would follow the treaty pattern).
 
 The kit's §4 learning ladder and four katas remain the hand line's entry
 path; kata 4 (hello/challenge with a refuse-everything dispatcher) lands

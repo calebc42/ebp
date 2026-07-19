@@ -9,9 +9,10 @@ validators in the reference implementation's WireGoldenConformanceTest:
 - every typed node in goldens/widgets.golden and goldens/hypertext.golden
   validates against node_schema (type known, required keys present, no key
   outside the schema) and every embedded action against action_schema;
-- every goldens/frames.golden line names a kind_schema-registered kind sent
-  in the client direction, with payload keys satisfying the kind's
-  required/optional sets.
+- every goldens/frames.golden line is a JSON-RPC 2.0 message (SPEC-2 §2)
+  naming a methods-registered method sent in the client direction, whose
+  id-ness matches the method's request/notification class and whose params
+  keys satisfy the method's required/optional sets.
 
 Exit 0 = clean; exit 1 prints every problem found.
 """
@@ -25,7 +26,8 @@ ROOT = Path(__file__).resolve().parent
 contract = json.loads((ROOT / "contract.json").read_text(encoding="utf-8"))
 NODE_TYPES = set(contract["node_types"])
 NODE_SCHEMA = contract["node_schema"]
-KIND_SCHEMA = contract["kind_schema"]
+METHODS = contract["methods"]
+ERROR_CODES = contract["error_codes"]
 ACTION_HOOK_KEYS = set(contract["action_hook_keys"])
 ACTION_SCHEMA = contract["action_schema"]
 COMMON_NODE_KEYS = set(NODE_SCHEMA["*"]["optional"])
@@ -91,36 +93,63 @@ def check_node(value, path: str):
             check_node(child, f"{path}.{key}")
 
 
-def check_payload(kind: str, payload: dict, path: str):
-    """A frame's payload keys against the kind schema."""
-    entry = KIND_SCHEMA.get(kind)
+def check_params(method: str, params: dict, path: str):
+    """A message's params keys against the method table."""
+    entry = METHODS.get(method)
     if entry is None:
-        problems.append(f"{path}: unknown frame kind `{kind}`")
+        problems.append(f"{path}: unknown method `{method}`")
         return
-    if entry.get("payload") == "node":
-        check_node(payload, path)
+    if entry.get("params") == "node":
+        check_node(params, path)
         return
-    required, optional = set(entry["required"]), set(entry["optional"])
+    row = entry["params"]
+    required, optional = set(row["required"]), set(row["optional"])
     for req in required:
-        if req not in payload:
-            problems.append(f"{path}: {kind} missing required `{req}`")
-    for key in payload:
+        if req not in params:
+            problems.append(f"{path}: {method} missing required `{req}`")
+    for key in params:
         if key not in required and key not in optional:
-            problems.append(f"{path}: unknown payload key `{key}` on {kind}")
+            problems.append(f"{path}: unknown params key `{key}` on {method}")
+
+
+def check_frame(msg: dict, path: str):
+    """One JSON-RPC message: envelope invariants + method-table conformance."""
+    if msg.get("jsonrpc") != "2.0":
+        problems.append(f"{path}: missing jsonrpc \"2.0\"")
+        return
+    method = msg.get("method")
+    if not isinstance(method, str):
+        problems.append(f"{path}: missing method")
+        return
+    entry = METHODS.get(method)
+    if entry is None:
+        problems.append(f"{path}: unknown method `{method}`")
+        return
+    if entry["direction"] not in ("client", "both"):
+        problems.append(f"{path}: `{method}` is not client-emitted")
+    # A request carries an id; a notification never does (SPEC-2 §2.1).
+    is_request = entry["type"] == "request"
+    if is_request != ("id" in msg):
+        problems.append(f"{path}: `{method}` id presence contradicts its "
+                        f"`{entry['type']}` class")
+    check_params(method, msg.get("params", {}), path)
 
 
 def main() -> int:
-    for field in ("contract_format", "protocol_version", "spec_version"):
+    for field in ("contract_format", "protocol_version", "spec_version",
+                  "methods", "error_codes"):
         if field not in contract:
             problems.append(f"contract.json: missing `{field}`")
 
+    # Every request method declares a result schema; notifications don't.
+    for name, entry in METHODS.items():
+        if (entry["type"] == "request") != ("result" in entry):
+            problems.append(f"contract.json: `{name}` result presence "
+                            f"contradicts its `{entry['type']}` class")
+
     frames = 0
     for n, line in enumerate(golden_lines("goldens/frames.golden"), 1):
-        frame = json.loads(line)
-        entry = KIND_SCHEMA.get(frame["kind"])
-        if entry and entry["direction"] not in ("client", "both"):
-            problems.append(f"frames:{n}: `{frame['kind']}` is not client-emitted")
-        check_payload(frame["kind"], frame["payload"], f"frames:{n}")
+        check_frame(json.loads(line), f"frames:{n}")
         frames += 1
 
     widgets = 0

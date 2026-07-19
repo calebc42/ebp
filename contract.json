@@ -1,8 +1,8 @@
 {
-  "contract_format": 3,
-  "reference_api_version": "1.27.0",
-  "protocol_version": 1,
-  "spec_version": "1.0-rc",
+  "contract_format": 5,
+  "reference_api_version": "2.0.0",
+  "protocol_version": 2,
+  "spec_version": "2.0-draft",
   "node_types": [
     "text",
     "rich_text",
@@ -504,267 +504,400 @@
       ]
     }
   },
-  "kind_schema": {
+  "methods": {
     "session.hello": {
       "direction": "client",
-      "required": [
-        "protocol",
-        "client",
-        "wants"
-      ],
-      "optional": [
-        "features"
-      ]
-    },
-    "auth.challenge": {
-      "direction": "companion",
-      "required": [
-        "nonce"
-      ],
-      "optional": []
+      "type": "request",
+      "params": {
+        "required": [
+          "protocol",
+          "client",
+          "wants"
+        ],
+        "optional": [
+          "features"
+        ]
+      },
+      "result": {
+        "required": [
+          "nonce"
+        ],
+        "optional": []
+      }
     },
     "auth.response": {
       "direction": "client",
-      "required": [
-        "nonce",
-        "mac"
-      ],
-      "optional": []
-    },
-    "session.welcome": {
-      "direction": "companion",
-      "required": [
-        "server_proof",
-        "granted",
-        "node_types",
-        "surfaces",
-        "queued_events"
-      ],
-      "optional": [
-        "protocol",
-        "server",
-        "device"
-      ]
-    },
-    "ack": {
-      "direction": "both",
-      "required": [],
-      "optional": []
-    },
-    "error": {
-      "direction": "both",
-      "required": [
-        "code"
-      ],
-      "optional": [
-        "detail",
-        "perm",
-        "settings"
-      ]
-    },
-    "ping": {
-      "direction": "both",
-      "required": [],
-      "optional": []
-    },
-    "pong": {
-      "direction": "both",
-      "required": [],
-      "optional": []
-    },
-    "surface.update": {
-      "direction": "client",
-      "required": [
-        "surface",
-        "revision",
-        "spec"
-      ],
-      "optional": [
-        "ttl_s",
-        "stale_spec",
-        "current_view"
-      ]
-    },
-    "surface.remove": {
-      "direction": "client",
-      "required": [
-        "surface"
-      ],
-      "optional": []
-    },
-    "event.action": {
-      "direction": "companion",
-      "required": [
-        "action"
-      ],
-      "optional": [
-        "args",
-        "surface",
-        "revision_seen",
-        "fields",
-        "queued_at"
-      ]
-    },
-    "state.changed": {
-      "direction": "companion",
-      "required": [
-        "id",
-        "value"
-      ],
-      "optional": []
-    },
-    "queue.replay": {
-      "direction": "client",
-      "required": [],
-      "optional": []
-    },
-    "queue.drained": {
-      "direction": "companion",
-      "required": [
-        "delivered",
-        "expired"
-      ],
-      "optional": [
-        "duplicate_request"
-      ]
-    },
-    "dialog.show": {
-      "direction": "client",
-      "payload": "node"
-    },
-    "dialog.dismiss": {
-      "direction": "client",
-      "required": [],
-      "optional": []
-    },
-    "pie_menu.show": {
-      "direction": "client",
-      "required": [
-        "categories"
-      ],
-      "optional": [
-        "center_label",
-        "buffer"
-      ]
-    },
-    "pie_menu.dismiss": {
-      "direction": "client",
-      "required": [],
-      "optional": []
-    },
-    "toast.show": {
-      "direction": "client",
-      "required": [
-        "text"
-      ],
-      "optional": []
-    },
-    "reminders.set": {
-      "direction": "client",
-      "required": [
-        "reminders"
-      ],
-      "optional": [
-        "owner"
-      ]
-    },
-    "theme.set": {
-      "direction": "client",
-      "required": [],
-      "optional": [
-        "dark",
-        "colors",
-        "syntax"
-      ]
-    },
-    "completions.show": {
-      "direction": "client",
-      "required": [
-        "id",
-        "request_id",
-        "prefix",
-        "candidates"
-      ],
-      "optional": []
-    },
-    "diagnostics.show": {
-      "direction": "client",
-      "required": [
-        "id",
-        "session",
-        "seq",
-        "diags"
-      ],
-      "optional": []
-    },
-    "eldoc.show": {
-      "direction": "client",
-      "required": [
-        "id",
-        "session",
-        "text"
-      ],
-      "optional": []
-    },
-    "fontify.show": {
-      "direction": "client",
-      "required": [
-        "id",
-        "session",
-        "seq",
-        "runs"
-      ],
-      "optional": []
-    },
-    "edit.resync": {
-      "direction": "client",
-      "required": [
-        "id",
-        "session"
-      ],
-      "optional": []
-    },
-    "edit.apply": {
-      "direction": "client",
-      "required": [
-        "id",
-        "session",
-        "seq",
-        "cursor"
-      ],
-      "optional": [
-        "start",
-        "del",
-        "text",
-        "len",
-        "sel_start",
-        "sel_end"
-      ]
+      "type": "request",
+      "params": {
+        "required": [
+          "nonce",
+          "mac"
+        ],
+        "optional": []
+      },
+      "result": {
+        "required": [
+          "server_proof",
+          "granted",
+          "node_types",
+          "surfaces",
+          "queued_events"
+        ],
+        "optional": [
+          "protocol",
+          "server",
+          "device",
+          "input_state",
+          "can_disable"
+        ]
+      }
     },
     "capability.invoke": {
       "direction": "client",
-      "required": [
-        "cap"
-      ],
-      "optional": [
-        "args"
-      ]
+      "type": "request",
+      "params": {
+        "required": [
+          "cap"
+        ],
+        "optional": [
+          "args"
+        ]
+      },
+      "result": {
+        "required": [],
+        "optional": [
+          "result"
+        ]
+      }
     },
-    "capability.result": {
-      "direction": "companion",
-      "required": [
-        "ok"
-      ],
-      "optional": [
-        "result"
-      ]
+    "queue.replay": {
+      "direction": "client",
+      "type": "request",
+      "params": {
+        "required": [],
+        "optional": []
+      },
+      "result": {
+        "required": [
+          "delivered",
+          "expired"
+        ],
+        "optional": [
+          "duplicate_request"
+        ]
+      }
     },
     "triggers.set": {
       "direction": "client",
-      "required": [
-        "triggers"
-      ],
-      "optional": []
+      "type": "request",
+      "params": {
+        "required": [
+          "triggers"
+        ],
+        "optional": []
+      },
+      "result": {
+        "required": [],
+        "optional": []
+      }
+    },
+    "reminders.set": {
+      "direction": "client",
+      "type": "request",
+      "params": {
+        "required": [
+          "reminders"
+        ],
+        "optional": [
+          "owner"
+        ]
+      },
+      "result": {
+        "required": [],
+        "optional": []
+      }
+    },
+    "surface.update": {
+      "direction": "client",
+      "type": "notification",
+      "params": {
+        "required": [
+          "surface",
+          "revision",
+          "spec"
+        ],
+        "optional": [
+          "ttl_s",
+          "stale_spec",
+          "current_view"
+        ]
+      }
+    },
+    "surface.remove": {
+      "direction": "client",
+      "type": "notification",
+      "params": {
+        "required": [
+          "surface"
+        ],
+        "optional": []
+      }
+    },
+    "event.action": {
+      "direction": "companion",
+      "type": "notification",
+      "params": {
+        "required": [
+          "action"
+        ],
+        "optional": [
+          "args",
+          "surface",
+          "revision_seen",
+          "fields",
+          "queued_at"
+        ]
+      }
+    },
+    "state.changed": {
+      "direction": "companion",
+      "type": "notification",
+      "params": {
+        "required": [
+          "id",
+          "value"
+        ],
+        "optional": [
+          "surface"
+        ]
+      }
+    },
+    "dialog.show": {
+      "direction": "client",
+      "type": "notification",
+      "params": "node"
+    },
+    "dialog.dismiss": {
+      "direction": "client",
+      "type": "notification",
+      "params": {
+        "required": [],
+        "optional": []
+      }
+    },
+    "pie_menu.show": {
+      "direction": "client",
+      "type": "notification",
+      "params": {
+        "required": [
+          "categories"
+        ],
+        "optional": [
+          "center_label",
+          "buffer"
+        ]
+      }
+    },
+    "pie_menu.dismiss": {
+      "direction": "client",
+      "type": "notification",
+      "params": {
+        "required": [],
+        "optional": []
+      }
+    },
+    "toast.show": {
+      "direction": "client",
+      "type": "notification",
+      "params": {
+        "required": [
+          "text"
+        ],
+        "optional": []
+      }
+    },
+    "theme.set": {
+      "direction": "client",
+      "type": "notification",
+      "params": {
+        "required": [],
+        "optional": [
+          "dark",
+          "colors",
+          "syntax"
+        ]
+      }
+    },
+    "completions.show": {
+      "direction": "client",
+      "type": "notification",
+      "params": {
+        "required": [
+          "id",
+          "request_id",
+          "prefix",
+          "candidates"
+        ],
+        "optional": []
+      }
+    },
+    "diagnostics.show": {
+      "direction": "client",
+      "type": "notification",
+      "params": {
+        "required": [
+          "id",
+          "session",
+          "seq",
+          "diags"
+        ],
+        "optional": []
+      }
+    },
+    "eldoc.show": {
+      "direction": "client",
+      "type": "notification",
+      "params": {
+        "required": [
+          "id",
+          "session",
+          "text"
+        ],
+        "optional": []
+      }
+    },
+    "fontify.show": {
+      "direction": "client",
+      "type": "notification",
+      "params": {
+        "required": [
+          "id",
+          "session",
+          "seq",
+          "runs"
+        ],
+        "optional": []
+      }
+    },
+    "edit.resync": {
+      "direction": "client",
+      "type": "notification",
+      "params": {
+        "required": [
+          "id",
+          "session"
+        ],
+        "optional": []
+      }
+    },
+    "edit.apply": {
+      "direction": "client",
+      "type": "notification",
+      "params": {
+        "required": [
+          "id",
+          "session",
+          "seq",
+          "cursor"
+        ],
+        "optional": [
+          "start",
+          "del",
+          "text",
+          "len",
+          "sel_start",
+          "sel_end"
+        ]
+      }
+    },
+    "log.error": {
+      "direction": "companion",
+      "type": "notification",
+      "params": {
+        "required": [
+          "code",
+          "message"
+        ],
+        "optional": [
+          "data"
+        ]
+      }
+    },
+    "rpc.cancel": {
+      "direction": "both",
+      "type": "notification",
+      "params": {
+        "required": [
+          "id"
+        ],
+        "optional": []
+      }
+    }
+  },
+  "error_codes": {
+    "-32700": {
+      "kind": "parse-error",
+      "context": "unparseable frame"
+    },
+    "-32600": {
+      "kind": "invalid-request",
+      "context": "not JSON-RPC 2.0 / prohibited batch / wrong direction or class"
+    },
+    "-32601": {
+      "kind": "method-not-found",
+      "context": "unknown request method"
+    },
+    "-32602": {
+      "kind": "invalid-params",
+      "context": "JSON-RPC standard set, reserved"
+    },
+    "-32603": {
+      "kind": "internal",
+      "context": "handler signalled"
+    },
+    "1001": {
+      "kind": "cap-unsupported",
+      "context": "capability.invoke"
+    },
+    "1002": {
+      "kind": "cap-permission",
+      "context": "capability.invoke; remedy rides data (perm, settings)"
+    },
+    "1003": {
+      "kind": "cap-failed",
+      "context": "capability.invoke"
+    },
+    "1101": {
+      "kind": "triggers-rejected",
+      "context": "triggers.set wholesale rejection"
+    },
+    "1200": {
+      "kind": "not-authenticated",
+      "context": "any method before the proof completes"
+    },
+    "1201": {
+      "kind": "spec-invalid",
+      "context": "malformed params"
+    },
+    "1202": {
+      "kind": "proto-version",
+      "context": "protocol mismatch at hello"
+    },
+    "1203": {
+      "kind": "auth-failed",
+      "context": "bad MAC"
+    },
+    "1301": {
+      "kind": "request-cancelled",
+      "context": "the answer to a cancelled request"
+    },
+    "1400": {
+      "kind": "frame-too-large",
+      "context": "frame-cap refusal, rides log.error"
+    },
+    "1401": {
+      "kind": "overloaded",
+      "context": "bounded-queue exhaustion, rides log.error"
     }
   },
   "action_hook_keys": [
@@ -832,7 +965,9 @@
         "builtin",
         "text"
       ],
-      "optional": []
+      "optional": [
+        "title"
+      ]
     },
     "jetpacs.settings.open": {
       "required": [
