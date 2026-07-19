@@ -85,3 +85,5 @@
 84 {"autofocus":true,"chromeless":true,"complete":true,"id":"seq-edit-b1-g2.org","on_enter":{"action":"x.y","args":{"k":"v"},"dedupe":"d","when_offline":"drop"},"publish_state":true,"t":"editor","value":"* block"}
 85 {"command":"org-todo","icon":"check","label":"TODO"}
 86 {"command":"","icon":"bolt","label":"M-x"}
+87 {"children":[{"t":"text","text":"leaf"}],"header":{"t":"text","text":"leaf"},"id":"cid2","swipe_end":{"color":"#2E7D32","icon":"schedule","label":"Today","on_trigger":{"action":"x.y","args":{"k":"v"},"dedupe":"d","when_offline":"drop"}},"swipe_start":{"icon":"check","label":"Done","on_trigger":{"action":"x.y","args":{"k":"v"},"dedupe":"d","when_offline":"drop"}},"t":"collapsible"}
+88 {"builtin":"share.send","text":"shared text","title":"Subject"}
