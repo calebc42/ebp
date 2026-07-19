@@ -1,10 +1,11 @@
 # EBP — the Emacs Bridge Protocol
 
-This branch is the hand-written rebuild of the protocol on
-JSON-RPC (LSP-guided).  It starts deliberately empty.
+Emacs Bridge
+Protocol, a JSON-RPC envelope inspired by Language Server Protocol that can be
+transported to any companion that can hold a socket and draw
+pixels to a canvas. Not just Jetpacs, eg Electron, Tauri, etc.
 
-The complete previous protocol — SPEC 1.0-rc, contract.json, the
-golden corpus, validate.py, and the amendment history — lives on
-the `slop-fork/main` branch: the LLM-generated line that the
-jetpacs reference implementations pin, and the north star this
-rebuild writes toward.
+This branch is the hand-written rebuild.
+
+The other jetpacs reference implementations pin the prior SPEC 2.0 protocol on
+the `slop-fork/main` branch. This is the north star the rebuild writes toward.
