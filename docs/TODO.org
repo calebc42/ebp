@@ -1,0 +1,2 @@
+Because jsonrpc.el was built for LSP, it expects the raw JSON messages to be framed with HTTP-style headers — specifically Content-Length. Your Android app must prepend this header to every JSON payload it sends, and parse it from every payload it receives.
+
