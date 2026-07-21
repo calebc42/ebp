@@ -969,7 +969,7 @@
         "title"
       ]
     },
-    "jetpacs.settings.open": {
+    "companion.settings.open": {
       "required": [
         "builtin"
       ],

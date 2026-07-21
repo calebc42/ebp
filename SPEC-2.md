@@ -3,8 +3,8 @@
 Spec: **2.0-draft** · Protocol: **2** · Contract: **format 5**
 
 **Status: the slop line, now self-contained.** This is the Claude-drafted
-reference rebuild, living on `ebp/slop-fork` by the same convention that
-names `jetpacs/slop-fork`: an LLM-written twin, deliberately labeled,
+reference rebuild, living on `ebp/slop-fork` — the slop-fork
+convention: an LLM-written twin, deliberately labeled,
 kept as the quarry and the checking copy. **The owner's hand-written
 spec is the real line and supersedes this document wherever they
 diverge.** Envelope drafted 2026-07-18 from SPEC.md 1.0-rc-as-amended,
@@ -281,10 +281,12 @@ Two independent version numbers, deliberately not conflated:
   change; the JSON-RPC envelope swap is exactly such a bump (1 → 2).
   A companion refuses a mismatched hello with `1202 proto-version`.
 - **API version** — the client library's Tier 1 surface (the Elisp
-  constructors and seams; reference: `jetpacs-api-version`, semver).
-  Carried informationally in `hello`'s `client` string
-  (`emacs/30.1 jetpacs.el/2.0.0`) for logging skew. A companion never
-  gates on it — the API surface is a client-side concern.
+  constructors and seams; semver, owned by the client library — the
+  contract mirrors the reference client's as the informational
+  `reference_api_version`). Carried informationally in `hello`'s
+  `client` string (`emacs/30.1 my-client/2.0.0`) for logging skew.
+  A companion never gates on it — the API surface is a client-side
+  concern.
 
 Node-vocabulary growth is **not** a protocol bump: new node types are
 additive and negotiated per-connection (§3 capability set + the
@@ -465,7 +467,7 @@ surface.remove   {surface}                                                      
   *is* the navigation; background refreshes must never yank the user.
 - **Widget surfaces.** A `widget:*` spec (or each of its views) carries
   `title`, `items` (rows of the home-widget row schema, emitted by the
-  `jetpacs-widget-item` / `jetpacs-widget-divider` constructors), and
+  reference client's widget-item / widget-divider constructors), and
   optional `empty` (the no-rows caption).
   One **top-level** key — a sibling of `views`/`initial_view`, since
   chrome is view-independent — is `header_action`: an ordinary §7 action
@@ -526,13 +528,15 @@ user, not the wire, chooses the command.
 
 Actions are dot-namespaced `noun.verb` (`heading.todo-set`,
 `files.rename`, `packages.install`). Namespaces belong to the module that
-registers the handler; the core reserves `jetpacs.*`, `nav.*`, `view.*`,
+registers the handler; the core reserves `nav.*`, `view.*`,
 `dialog.*`, `edit.*`, `tablist.*`, `settings.*`, `prompt.*`,
 `dashboard.*`, `files.*`, `emacs.*`, `packages.*`, `customize.*`,
 `transient.*`, `share.*`, `demo.*`, `witheditor.*`, `comint.*`,
 `imenu.*`, `tools.*`, `trigger.*` (device-trigger fires, §13), `app.*`
-(launcher app switching, jetpacs-apps.el), `device.*` (device-effector
-UI: the app-launch picker, the permissions screen — jetpacs-device.el).
+(launcher app switching), `device.*` (device-effector UI: the
+app-launch picker, the permissions screen). An implementation's own
+modules claim their namespaces like any other module — the core
+reserves no brand.
 
 - `when_offline` is the queue policy the *spec author* chose for the
   control: `"queue"` (default — persist and replay), `"drop"` (meaningless
@@ -576,8 +580,9 @@ informs the client with a drop-policy `view.switched` event),
 `{"builtin": "clipboard.copy", "text": s}`,
 `{"builtin": "share.send", "text": s, "title"?: t}` (the system share
 sheet; `title` is the subject where the receiving app supports one),
-`{"builtin": "jetpacs.settings.open"}` (opens Android-owned Jetpacs settings
-for permissions, notifications, offline state, pairing, and diagnostics),
+`{"builtin": "companion.settings.open"}` (opens the companion's own
+settings surface: permissions, notifications, offline state, pairing,
+and diagnostics),
 and `{"builtin": "trigger.fire", "id": t}` — fires the §13 `manual`
 registration named `id` through the full trigger pipeline (gate,
 throttle, `on_fire`, event/queue) with fire data `{source: "tap"}`.
@@ -641,8 +646,8 @@ A `dialog.show` spec's **root node** may carry `dialog_style`:
 (collapsed / fully expanded — the native idiom for pickers and action
 menus); anything else, or its absence, keeps the centered dialog window.
 Additive: an old companion ignores the key and centers the dialog. The
-elisp side sets it per-call (`jetpacs-send-dialog`'s STYLE) or globally
-(`jetpacs-dialog-style`).
+reference client sets it per-call (its dialog command's STYLE argument)
+or globally (a client option).
 
 **Owner-scoped reminders.** `reminders.set` carries an optional `owner` (an
 app-id string). The companion partitions armed alarms by owner, so a set
@@ -650,8 +655,8 @@ replaces only that owner's previous alarms; a blank/absent `owner` is the
 unowned/core bucket, and request codes are hashed with the owner so distinct
 apps never collide. This lets two Tier 1 apps arm reminders without one's
 set cancelling the other's — a bare owner-less set could not. A companion
-advertising the `reminders.owner` capability is owner-aware:
-`jetpacs-reminders-owner-set` sends the scoped set only when it is granted,
+advertising the `reminders.owner` capability is owner-aware: the
+reference client sends the scoped set only when it is granted,
 and otherwise degrades — a plain global set when only one app is registered,
 else it warns and arms nothing rather than clobber another app. Additive: an
 old companion ignores `owner` (treating every set as the one global set).
@@ -678,8 +683,8 @@ than a device-only default. A companion that predates `base` sees a push
 with no `colors`, treats it as the clear, and falls back to its own scheme
 chain — so `base` degrades to "the companion decides."
 
-The reference client extracts the palette from the running Emacs theme
-(`jetpacs-theme.el`), and its `jetpacs-theme-mode` (`default` / `material`
+The reference client extracts the palette from the running Emacs theme,
+and its three-way theme-mode option (`default` / `material`
 / `emacs`) drives exactly the above: `emacs` mirrors, the others send the
 matching `base`. Mirroring leans on the modus-themes palette API when a
 modus-family theme is active and on resolved face attributes otherwise.
@@ -1003,7 +1008,7 @@ Summary by family:
   `month_grid` a `flow_row` of `fill_fraction` day boxes) on a
   companion that predates them. Each may also carry `children` as the
   *authored* fallback subtree (since 1.23.0; the reference client's
-  `jetpacs-additive` wrapper): by this section's opening rule an
+  additive wrapper): by this section's opening rule an
   unrecognised `t` renders its children, so a pre-ladder companion
   shows the fallback while a current one renders the visualization
   and ignores the slot.
@@ -1040,16 +1045,16 @@ Summary by family:
   unknown meta key and posts the notification with no action buttons; it
   never fails. (A `button` node placed directly in the body is still
   honored as an action when `meta.actions` is absent, the older implicit
-  form.) Emit via `jetpacs-notification-action` / `jetpacs-notification-spec
-  :actions`.
+  form.) The reference client emits these via its notification-action
+  constructor / notification-spec `:actions`.
 
 ### Editor toolbars
 
 `editor`'s `toolbar` attribute is **string | array**:
 
 - **string** — the name of a host-registered native toolbar
-  (`JetpacsToolbars` in the companion; the Kotlin-alternative path per
-  the ladder doctrine, §11 visualization family). The library registers
+  (the companion's native toolbar registry; the Kotlin-alternative path
+  per the ladder doctrine, §11 visualization family). The library registers
   none; an unknown name renders nothing.
 - **array of toolbar items** — the data-driven form. The companion
   interprets the items locally (`SduiToolbar`); every op is one minimal
@@ -1067,7 +1072,7 @@ Summary by family:
   | `long_press` | optional secondary op: an object with exactly one of `snippet`/`line`/`on_tap` |
 
   Exactly **one** op field (`snippet`/`line`/`on_tap`/`menu`) per item
-  (`jetpacs-lint` enforces).
+  (the reference client's linter enforces).
 
   **Snippet placeholders** (closed, companion-local):
 
@@ -1089,8 +1094,9 @@ Summary by family:
 
   **Forward compat:** the array form is additive. An old companion that
   predates it treats the value as an unknown toolbar name and renders no
-  toolbar; it never crashes. Emit via `jetpacs-toolbar-item` /
-  `jetpacs-editor :toolbar` and lint with `jetpacs-lint-spec`.
+  toolbar; it never crashes. The reference client emits it via its
+  toolbar-item constructor / editor `:toolbar` and lints it with its
+  spec linter.
 
 ## 12. Device capabilities (optional)
 
@@ -1184,7 +1190,7 @@ C→  capability.invoke   {cap, args?}   →   {result?}
 | `flashlight` | `{on}` | — | torch of the first flash-capable camera; none → `cap-failed` |
 | `media.key` | `{key}` | — | `play_pause` \| `play` \| `pause` \| `next` \| `previous` \| `stop` \| `fast_forward` \| `rewind` |
 | `clipboard.read` | — | `{text}` | Android 10+ exposes the clipboard only to the focused app → `cap-permission` while backgrounded. Contents must never be logged or persisted companion-side |
-| `screen.keep_on` | `{on}` | — | a window flag held only while the companion's Jetpacs UI is on screen — it cannot pin the device awake from the background |
+| `screen.keep_on` | `{on}` | — | a window flag held only while the companion's own UI is on screen — it cannot pin the device awake from the background |
 | `brightness.set` | `{level}` | — | 0–255, switches to manual brightness; ungranted → `cap-permission` (`write_settings` + the grant deep-link) |
 | `dnd.set` | `{mode}` | — | `on` \| `off` \| `priority`; ungranted → `cap-permission` (`notification_policy` + the grant deep-link) |
 | `state.get` | `{types?, when?}` | `{states, unavailable?, holds?}` | sample the §13 state predicates. `states` maps each requested type (default: every `device.state_types` entry) to its current state object (shapes in §13 "State predicates & sampling"); a type that cannot be sampled lands in `unavailable` as its typed failure kind, never failing the batch. `when` — a §13 predicate array — adds `holds`, evaluated by the same code path that gates fires, so a gate is testable from Emacs before it ships; a malformed `when` → `cap-failed` |
@@ -1453,6 +1459,10 @@ amendment when its implementation lands:
    exactly as designed for a companion that doesn't announce it.
 6. `wifi.ssid` / `bluetooth.device` (§13): reserved, unimplemented on
    every line — carried from v1 unchanged.
+7. **#29 de-branding** — the `companion.settings.open` builtin (§7):
+   the running reference pair still emits and handles the old
+   `jetpacs.settings.open` name; the rename re-enters the reference by
+   ordinary lockstep change (elisp + Kotlin emission sites and tests).
 
 ## 15. What guided what
 
