@@ -23,6 +23,8 @@ layout of a reference implementation.
 | [`BUILDING-COMPANION.md`](BUILDING-COMPANION.md) | The build order — the rungs of §12 conformance unrolled, what to test at each, and where the reference Kotlin does the same job. |
 | [`validate.py`](validate.py) | Stdlib-only self-check: every golden line validates against `contract.json`. Run by this repo's CI, and a runnable reference for the checks your own renderer's test suite should perform. |
 | [`SPEC-CHANGES.md`](SPEC-CHANGES.md) | The amendment log. Every normative change lands with one entry here (date, section, change, fixtures regenerated, reviewer). No entry, no amendment. |
+| [`tools/build-contract.el`](tools/build-contract.el) | The contract projector — regenerates `contract.json` from the reference client's authored schema tables. Runs inside a checkout that consumes this repo as a submodule (see its header). |
+| [`slop-docs/`](slop-docs/) | The slop line's drafting kits and precedent surveys (JSON-RPC conversion, WebSocket transport, the LiveView harvest) — the provenance documents SPEC-2's status block and §16 cite. |
 
 ## Versioning
 

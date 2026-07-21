@@ -1459,10 +1459,6 @@ amendment when its implementation lands:
    exactly as designed for a companion that doesn't announce it.
 6. `wifi.ssid` / `bluetooth.device` (§13): reserved, unimplemented on
    every line — carried from v1 unchanged.
-7. **#29 de-branding** — the `companion.settings.open` builtin (§7):
-   the running reference pair still emits and handles the old
-   `jetpacs.settings.open` name; the rename re-enters the reference by
-   ordinary lockstep change (elisp + Kotlin emission sites and tests).
 
 ## 15. What guided what
 
