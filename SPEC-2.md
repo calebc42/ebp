@@ -17,8 +17,9 @@ sync, widgets, capabilities, triggers, conformance — re-homed on this
 envelope, from SPEC.md as amended through #26.
 
 **Fold ground rules.** Wire-visible names follow the format-5 contract
-and the running reference (so this document, its machine artifact, and
-its checking copies agree with each other); v1 amendments whose prose
+— authored in this repo, the machine truth this document agrees with;
+the running reference conforms to it, and its own suite catches drift.
+V1 amendments whose prose
 outran the reference are carried in full but inventoried in §14's
 *Reference status* — the #26 convention, made explicit instead of
 sprinkled. The v1 document (SPEC.md, its amendment log) remains beside
@@ -1432,7 +1433,7 @@ and the allowlist rule of §7.
 The reference pair (elisp client + Android companion, `jetpacs
 slop-fork`) implements this document except where inventoried here —
 the #26 spec-ahead convention, consolidated. Each item re-enters the
-reference (and where applicable the generated contract) by ordinary
+reference (and where applicable the contract) by ordinary
 amendment when its implementation lands:
 
 1. **§4 staging** — `dialog.show` and the `edit.*` legs ship as
@@ -1492,8 +1493,9 @@ amendment when its implementation lands:
    beside `granted` in the welcome would follow the treaty pattern).
 7. The WebSocket transport profile — the browser-companion door (Emacs
    listens, the page dials; roles unchanged). Quarried in
-   `slop-docs/WEBSOCKET-transport-kit.md`, prototyped-by-plan as
-   `docs/PLAN-jetpacs-cloud.md`, currently parked: the §1 transport row
+   `slop-docs/WEBSOCKET-transport-kit.md`, prototyped-by-plan as the
+   reference repo's `docs/PLAN-jetpacs-cloud.md`, currently parked: the
+   §1 transport row
    gains the profile when a working companion exists, not before.
 
 The kit's §4 learning ladder and four katas remain the hand line's entry

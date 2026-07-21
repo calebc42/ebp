@@ -10,7 +10,12 @@ can hold a TCP socket and draw boxes.
 
 This repo is the **contract**, not an implementation. It exists so that any
 client or companion can pin a stable, versioned surface without depending on the
-layout of a reference implementation.
+layout of a reference implementation. The contract is **authored here**:
+`contract.json` and `goldens/` are this repo's hand-owned truth, and nothing in
+this repo requires any implementation to exist or build (`validate.py` is
+stdlib-only). Reference implementations keep themselves conformant with their
+own tooling — an intended wire change lands here first, by amendment, and the
+implementations follow.
 
 ## What's here
 
@@ -23,8 +28,7 @@ layout of a reference implementation.
 | [`BUILDING-COMPANION.md`](BUILDING-COMPANION.md) | The build order — the rungs of §12 conformance unrolled, what to test at each, and where the reference Kotlin does the same job. |
 | [`validate.py`](validate.py) | Stdlib-only self-check: every golden line validates against `contract.json`. Run by this repo's CI, and a runnable reference for the checks your own renderer's test suite should perform. |
 | [`SPEC-CHANGES.md`](SPEC-CHANGES.md) | The amendment log. Every normative change lands with one entry here (date, section, change, fixtures regenerated, reviewer). No entry, no amendment. |
-| [`tools/build-contract.el`](tools/build-contract.el) | The contract projector — regenerates `contract.json` from the reference client's authored schema tables. Runs inside a checkout that consumes this repo as a submodule (see its header). |
-| [`slop-docs/`](slop-docs/) | The slop line's drafting kits and precedent surveys (JSON-RPC conversion, WebSocket transport, the LiveView harvest) — the provenance documents SPEC-2's status block and §16 cite. |
+| [`slop-docs/`](slop-docs/) | The slop line's drafting kits and precedent surveys (JSON-RPC conversion, WebSocket transport, the LiveView harvest) — the provenance documents SPEC-2's status block and §16 cite. Informative only — not part of the contract surface. |
 
 ## Versioning
 
@@ -48,13 +52,14 @@ Releases are tagged off the protocol/spec numbers (e.g. `spec-1.0-rc`). The
 elisp reference implementation's own API version is a *separate* number that
 lives with that implementation — `contract.json` carries it only as the
 informational `reference_api_version` (the reference client's Tier-1 surface
-at generation time); pin `protocol_version` / `spec_version` instead.
+as of the last reference sync); pin `protocol_version` / `spec_version` instead.
 
 ## Consumers
 
-- The **Jetpacs** reference implementation — an elisp client
-  (`emacs/core/`) and an Android/Compose companion — generates and
-  conformance-tests against this contract.
+- The **Jetpacs** reference implementation — an elisp client and an
+  Android/Compose companion — conformance-tests against this contract
+  (its suite regenerates its own projection of `contract.json` and the
+  goldens, and byte-compares against the committed files here).
 - **jetpacs-composer**, a no-code view editor, validates authored emissions
   against `contract.json`.
 - Your companion or client: pin a tag of this repo and hold your renderer to
