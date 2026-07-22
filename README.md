@@ -9,3 +9,12 @@ This branch is the hand-written rebuild.
 
 The other jetpacs reference implementations pin the prior SPEC 2.0 protocol on
 the `slop-fork/main` branch. This is the north star the rebuild writes toward.
+
+
+- Emacs owns application state and policy.  
+- Companions provide native presentation and platform integration.  
+- EBP carries declarative data and semantic actions, never executable application code.  
+- Implementations are language- and toolkit-independent.  
+- Capabilities beyond the mandatory core are explicitly negotiated.
+
+Jetpacs is one Companion; EBP is the contract that makes Jetpacs replaceable.

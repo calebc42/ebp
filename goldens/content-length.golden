@@ -1,0 +1,5 @@
+Content-Length: 106
+
+{"jsonrpc":"2.0","id":1,"method":"session.hello","params":{"count":"bytes","dontcount":"characters 👍"}}Content-Length: 101
+
+{"jsonrpc":"2.0","id":2,"method":"session.hello","params":{"count":"bytes","dontcount":"characters"}}
