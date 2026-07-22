@@ -2411,9 +2411,21 @@ It MUST apply a valid splice atomically. On any failure it MUST mark the
 session stale and MUST request resynchronization once; it MUST ignore further
 deltas until the resynchronization completes.
 
+A delta's granularity is the Companion's choice. Local editing is applied to
+the shadow immediately and never waits for Emacs; the Companion MAY coalesce
+a rapid sequence of local edits into one composite splice before assigning
+`seq`, and SHOULD do so when edits arrive faster than mirroring them is
+useful, provided the composite splice satisfies the length equation and
+respects platform composition atomicity. Coalescing widens the window in
+which a concurrent `edit.apply` receives a `stale` result; the Companion
+SHOULD bound its coalescing interval so that window stays short.
+
 `edit.caret` contains `document`, `editor_id`, `session`, `seq`, `cursor`, and
 optional paired `sel_start` and `sel_end`. It is accepted only when `session` and `seq` match. It is
-best-effort presentation context and MUST NOT change document text.
+best-effort presentation context and MUST NOT change document text. The
+Companion SHOULD throttle caret reporting at the source; an intermediate
+position it never emits is not conflation under Section 22.2, which governs
+only messages already emitted.
 
 `edit.close` is `{document, editor_id, session}`. It MUST release session
 resources. Unsaved-document policy belongs to Emacs and MUST be represented by
@@ -3077,7 +3089,10 @@ EBP has three load-management classes:
    transmitted without concluding its local caller.
 2. **Ordered streams.** Editor opens, deltas, applies, carets, closes, and
    resynchronizations MUST NOT be reordered or conflated. A gap MUST make the
-   stream stale and invoke its resync rule.
+   stream stale and invoke its resync rule. This governs emitted messages;
+   Section 19.3 controls what the Companion chooses to emit — pre-`seq`
+   coalescing of local edits and source-throttled caret reporting are not
+   conflation.
 3. **Intent events.** `state.changed` and `event.action` MUST preserve required
    state-before-action and event ordering. Unsent `state.changed` values MAY be
    debounced or conflated latest-wins per `(surface, id)` only under Section
