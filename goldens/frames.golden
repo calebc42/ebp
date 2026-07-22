@@ -1,21 +1,35 @@
-00 {"id":1,"jsonrpc":"2.0","method":"triggers.set","params":{"triggers":[{"dedupe":"power-sync","id":"power-sync","on_fire":[{"args":{"on":true},"cap":"flashlight"},{"notify":{"text":"plug ${data.plug}","title":"Charging ${id}"}}],"params":{"state":"connected"},"policy":"wake","throttle_s":60,"type":"power"},{"id":"quiet-notify","params":{"below":20},"type":"battery.level","when":[{"state":"disconnected","type":"power"},{"after":"22:00","before":"07:00","days":["mon","tue","wed","thu","fri"],"type":"time.window"}]},{"id":"screen-off","params":{"state":"off"},"type":"screen"}]}}
-01 {"id":2,"jsonrpc":"2.0","method":"capability.invoke","params":{"args":{"action":"android.intent.action.VIEW","data":"https://example.com","mode":"activity"},"cap":"intent.start"}}
-02 {"id":3,"jsonrpc":"2.0","method":"capability.invoke","params":{"args":{"class_name":"com.termux.app.TermuxActivity","extras":{"com.example.COUNT":3,"com.example.FLAG":true},"mode":"activity","package":"com.termux"},"cap":"intent.start"}}
-03 {"id":4,"jsonrpc":"2.0","method":"capability.invoke","params":{"args":{"package":"org.gnu.emacs"},"cap":"app.launch"}}
-04 {"id":5,"jsonrpc":"2.0","method":"capability.invoke","params":{"args":{},"cap":"apps.list"}}
-05 {"id":6,"jsonrpc":"2.0","method":"capability.invoke","params":{"args":{"ms":300},"cap":"vibrate"}}
-06 {"id":7,"jsonrpc":"2.0","method":"capability.invoke","params":{"args":{"pattern":[0,100,50,100]},"cap":"vibrate"}}
-07 {"id":8,"jsonrpc":"2.0","method":"capability.invoke","params":{"args":{"pitch":1.2,"rate":0.9,"text":"hello"},"cap":"tts.speak"}}
-08 {"id":9,"jsonrpc":"2.0","method":"capability.invoke","params":{"args":{"level":5,"stream":"music"},"cap":"volume.set"}}
-09 {"id":10,"jsonrpc":"2.0","method":"capability.invoke","params":{"args":{"mode":"vibrate"},"cap":"ringer.mode"}}
-10 {"id":11,"jsonrpc":"2.0","method":"capability.invoke","params":{"args":{"on":true},"cap":"flashlight"}}
-11 {"id":12,"jsonrpc":"2.0","method":"capability.invoke","params":{"args":{"on":false},"cap":"flashlight"}}
-12 {"id":13,"jsonrpc":"2.0","method":"capability.invoke","params":{"args":{"key":"play_pause"},"cap":"media.key"}}
-13 {"id":14,"jsonrpc":"2.0","method":"capability.invoke","params":{"args":{},"cap":"clipboard.read"}}
-14 {"id":15,"jsonrpc":"2.0","method":"capability.invoke","params":{"args":{"panel":"wifi"},"cap":"settings.open"}}
-15 {"id":16,"jsonrpc":"2.0","method":"capability.invoke","params":{"args":{"on":true},"cap":"screen.keep_on"}}
-16 {"id":17,"jsonrpc":"2.0","method":"capability.invoke","params":{"args":{"level":128},"cap":"brightness.set"}}
-17 {"id":18,"jsonrpc":"2.0","method":"capability.invoke","params":{"args":{"mode":"priority"},"cap":"dnd.set"}}
-18 {"id":19,"jsonrpc":"2.0","method":"capability.invoke","params":{"args":{"types":["power","battery.level"],"when":[{"state":"disconnected","type":"power"}]},"cap":"state.get"}}
-19 {"jsonrpc":"2.0","method":"edit.apply","params":{"cursor":5,"del":5,"id":"golden.txt","len":11,"seq":1,"session":1,"start":0,"text":"HELLO"}}
-20 {"jsonrpc":"2.0","method":"edit.apply","params":{"cursor":6,"id":"golden.txt","sel_end":11,"sel_start":6,"seq":1,"session":1}}
+00 {"id":"h1","jsonrpc":"2.0","method":"session.hello","params":{"client":{"name":"example-emacs-client","version":"1.0.0"},"client_nonce":"0123456789abcdef0123456789abcdef","pairing_id":"89abcdef0123456789abcdef01234567","protocol":2,"wants":["surfaces.dialog","theme"]}}
+01 {"id":"h2","jsonrpc":"2.0","method":"auth.response","params":{"client_nonce":"0123456789abcdef0123456789abcdef","client_proof":"0000000000000000000000000000000000000000000000000000000000000000","pairing_id":"89abcdef0123456789abcdef01234567","server_nonce":"fedcba9876543210fedcba9876543210"}}
+02 {"id":"r1","jsonrpc":"2.0","method":"session.ready","params":{}}
+03 {"id":"s1","jsonrpc":"2.0","method":"surface.update","params":{"reset_input_ids":["title"],"revision":42,"spec":{"children":[{"id":"title","t":"text_input","value":"draft"}],"t":"column"},"stale_after_s":3600,"stale_spec":{"t":"text","text":"Disconnected"},"surface":"app:main"}}
+04 {"id":"s2","jsonrpc":"2.0","method":"surface.update","params":{"current_view":"detail","revision":43,"spec":{"initial_view":"list","views":{"detail":{"children":[],"t":"column"},"list":{"children":[],"t":"column"}}},"surface":"app:main"}}
+05 {"id":"s3","jsonrpc":"2.0","method":"surface.remove","params":{"revision":44,"surface":"app:old"}}
+06 {"id":"q1","jsonrpc":"2.0","method":"queue.replay","params":{}}
+07 {"id":"d1","jsonrpc":"2.0","method":"dialog.show","params":{"dialog_id":"rename","spec":{"children":[{"id":"name","t":"text_input"},{"label":"OK","on_tap":{"builtin":"dialog.submit","capture_fields":["name"]},"t":"button"}],"t":"column"},"style":"sheet"}}
+08 {"id":"m1","jsonrpc":"2.0","method":"reminders.set","params":{"owner":"org.example.agenda","reminders":[{"at_ms":1784700000000,"body":"Room 3","id":"meeting-1","on_tap":{"action":"agenda.open-entry"},"title":"Meeting"}]}}
+09 {"id":"t1","jsonrpc":"2.0","method":"triggers.set","params":{"triggers":[{"dedupe":"battery-low","id":"battery-low","on_fire":[{"notify":{"text":"Level ${data.level}%","title":"Battery"}},{"args":{"ms":300},"cap":"vibrate"}],"params":{"below":20},"policy":"queue","throttle_s":3600,"ttl_s":86400,"type":"battery.level","when":[{"state":"off","type":"screen"},{"after":"22:00","before":"07:00","days":["mon","tue","wed","thu","fri"],"type":"time.window"}]},{"id":"nightly","params":{"every_s":86400},"policy":"wake","ttl_s":43200,"type":"time"},{"id":"on-boot","type":"boot"},{"id":"manual-sync","type":"manual"},{"id":"charging-idle","params":{"edge":"rise","when":[{"state":"connected","type":"power"},{"state":"off","type":"screen"}]},"policy":"queue","ttl_s":3600,"type":"state.edge"}]}}
+10 {"id":"c1","jsonrpc":"2.0","method":"capability.invoke","params":{"args":{"pattern":[0,100,50,100]},"cap":"vibrate"}}
+11 {"id":"c2","jsonrpc":"2.0","method":"capability.invoke","params":{"args":{"types":["battery.level","screen"],"when":[{"above":20,"type":"battery.level"}]},"cap":"state.get"}}
+12 {"id":"c3","jsonrpc":"2.0","method":"capability.invoke","params":{"args":{"action":"android.intent.action.VIEW","data":"https://example.com","mode":"activity"},"cap":"intent.start"}}
+13 {"id":"c4","jsonrpc":"2.0","method":"capability.invoke","params":{"args":{"cursor":"com.example.app","limit":50},"cap":"apps.list"}}
+14 {"id":"e1","jsonrpc":"2.0","method":"edit.resync","params":{"document":"doc:notes/123","editor_id":"body","session":"00112233445566778899aabbccddeeff"}}
+15 {"id":"e2","jsonrpc":"2.0","method":"edit.apply","params":{"cursor":6,"del":2,"document":"doc:notes/123","editor_id":"body","len":13,"sel_end":6,"sel_start":6,"seq":2,"session":"00112233445566778899aabbccddeeff","start":3,"text":"abc"}}
+16 {"id":"e3","jsonrpc":"2.0","method":"edit.apply","params":{"cursor":0,"document":"doc:notes/123","editor_id":"body","seq":2,"session":"00112233445566778899aabbccddeeff"}}
+17 {"jsonrpc":"2.0","method":"toast.show","params":{"duration_s":3,"text":"Saved"}}
+18 {"jsonrpc":"2.0","method":"pie_menu.show","params":{"categories":[{"label":"Todo","on_tap":{"action":"capture.todo"}},{"items":[{"icon":"note","label":"Note","on_tap":{"action":"capture.note"}}],"label":"More"}],"center_label":"Capture","menu_id":"capture"}}
+19 {"jsonrpc":"2.0","method":"pie_menu.dismiss","params":{"menu_id":"capture"}}
+20 {"jsonrpc":"2.0","method":"theme.set","params":{"colors":{"on_primary":"#ffffff","primary":"#3366ff"},"dark":true,"syntax":{"keyword":{"fg":"#cc0000","font_weight":"bold"}}}}
+21 {"jsonrpc":"2.0","method":"diagnostics.show","params":{"diagnostics":[{"end":4,"message":"Spelling","severity":"warning","start":0}],"editor_id":"body","seq":2,"session":"00112233445566778899aabbccddeeff"}}
+22 {"jsonrpc":"2.0","method":"eldoc.show","params":{"editor_id":"body","seq":2,"session":"00112233445566778899aabbccddeeff","text":"(defun foo (bar))"}}
+23 {"jsonrpc":"2.0","method":"fontify.show","params":{"editor_id":"body","runs":[{"end":5,"role":"keyword","start":0}],"seq":2,"session":"00112233445566778899aabbccddeeff"}}
+24 {"jsonrpc":"2.0","method":"rpc.cancel","params":{"id":"q1"}}
+25 {"jsonrpc":"2.0","method":"log.error","params":{"code":1401,"data":{"kind":"overloaded"},"message":"Inbound processing capacity exhausted"}}
+26 {"id":"ev1","jsonrpc":"2.0","method":"event.action","params":{"action":"heading.todo-set","args":{"state":"DONE"},"event_id":"5566778899aabbccddeeff0011223344","fields":{"note":"call Alice"},"occurred_at_ms":1784700000000,"queued_at_ms":1784700000100,"revision_seen":42,"surface":"app:agenda"}}
+27 {"id":"ev2","jsonrpc":"2.0","method":"event.action","params":{"action":"dialog.renamed","dialog_id":"rename","event_id":"66778899aabbccddeeff001122334455","occurred_at_ms":1784700001000}}
+28 {"id":"ev3","jsonrpc":"2.0","method":"event.action","params":{"action":"trigger.fired","args":{"data":{"level":19},"id":"battery-low","type":"battery.level"},"event_id":"778899aabbccddeeff00112233445566","occurred_at_ms":1784700002000,"queued_at_ms":1784700002050}}
+29 {"jsonrpc":"2.0","method":"state.changed","params":{"id":"title","revision_seen":42,"surface":"app:main","value":"draft"}}
+30 {"jsonrpc":"2.0","method":"edit.open","params":{"cursor":0,"document":"doc:notes/123","editor_id":"body","sel_end":0,"sel_start":0,"seq":0,"session":"00112233445566778899aabbccddeeff","text":"initial text"}}
+31 {"jsonrpc":"2.0","method":"edit.delta","params":{"del":2,"document":"doc:notes/123","editor_id":"body","len":13,"seq":1,"session":"00112233445566778899aabbccddeeff","start":3,"text":"abc"}}
+32 {"jsonrpc":"2.0","method":"edit.caret","params":{"cursor":4,"document":"doc:notes/123","editor_id":"body","seq":1,"session":"00112233445566778899aabbccddeeff"}}
+33 {"jsonrpc":"2.0","method":"edit.close","params":{"document":"doc:notes/123","editor_id":"body","session":"00112233445566778899aabbccddeeff"}}
+34 {"id":"cp1","jsonrpc":"2.0","method":"edit.complete","params":{"cursor":3,"document":"doc:notes/123","editor_id":"body","seq":1,"session":"00112233445566778899aabbccddeeff"}}

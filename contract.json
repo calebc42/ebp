@@ -1,14 +1,31 @@
 {
-  "contract_format": 5,
-  "reference_api_version": "2.0.0",
+  "contract_format": 6,
   "protocol_version": 2,
-  "spec_version": "2.0-draft",
+  "spec_version": "2.0.0-draft",
+  "reference_api_version": "2.0.0",
+  "core_node_set": [
+    "text",
+    "row",
+    "column",
+    "box",
+    "spacer",
+    "divider",
+    "button",
+    "text_input"
+  ],
   "node_types": [
     "text",
     "rich_text",
+    "icon",
+    "image",
+    "date_stamp",
+    "section_header",
+    "empty_state",
+    "progress",
+    "badge",
     "row",
-    "flow_row",
     "column",
+    "flow_row",
     "box",
     "surface",
     "lazy_column",
@@ -17,23 +34,13 @@
     "card",
     "collapsible",
     "reorderable_list",
-    "table",
     "tabs",
-    "chart",
-    "canvas",
-    "month_grid",
-    "icon",
-    "image",
-    "date_stamp",
-    "section_header",
-    "empty_state",
-    "progress",
-    "menu",
+    "table",
     "button",
     "icon_button",
     "chip",
     "assist_chip",
-    "badge",
+    "menu",
     "text_input",
     "editor",
     "checkbox",
@@ -42,794 +49,737 @@
     "date_button",
     "time_button",
     "slider",
+    "chart",
+    "canvas",
+    "month_grid",
     "scaffold"
   ],
+  "universal_node_attributes": [
+    "key",
+    "id",
+    "scroll_here",
+    "padding",
+    "pad",
+    "width",
+    "height",
+    "min_width",
+    "max_width",
+    "min_height",
+    "max_height",
+    "fill_fraction",
+    "aspect_ratio",
+    "weight",
+    "bg",
+    "corner",
+    "border",
+    "alpha",
+    "clip",
+    "align_self"
+  ],
   "node_schema": {
-    "*": {
-      "required": [],
-      "optional": [
-        "scroll_here",
-        "dialog_style",
-        "key"
-      ]
-    },
     "text": {
-      "required": [
-        "text"
-      ],
-      "optional": [
-        "style",
-        "weight",
-        "color",
-        "selectable",
-        "max_lines",
-        "padding",
-        "syntax"
-      ]
+      "required": ["text"],
+      "optional": ["style", "font_weight", "color", "selectable", "max_lines", "syntax"]
     },
     "rich_text": {
-      "required": [
-        "spans"
-      ],
-      "optional": [
-        "style",
-        "padding"
-      ]
-    },
-    "row": {
-      "required": [
-        "children"
-      ],
-      "optional": [
-        "spacing",
-        "align",
-        "scroll",
-        "weight",
-        "fill"
-      ]
-    },
-    "flow_row": {
-      "required": [
-        "children"
-      ],
-      "optional": [
-        "spacing",
-        "run_spacing"
-      ]
-    },
-    "column": {
-      "required": [
-        "children"
-      ],
-      "optional": [
-        "spacing",
-        "align",
-        "scroll",
-        "weight",
-        "fill"
-      ]
-    },
-    "box": {
-      "required": [
-        "children"
-      ],
-      "optional": [
-        "alignment",
-        "padding",
-        "weight",
-        "on_tap",
-        "width",
-        "height",
-        "fill_fraction",
-        "border"
-      ]
-    },
-    "surface": {
-      "required": [
-        "children"
-      ],
-      "optional": [
-        "color",
-        "shape",
-        "elevation",
-        "padding",
-        "fill",
-        "width",
-        "height",
-        "fill_fraction",
-        "border"
-      ]
-    },
-    "lazy_column": {
-      "required": [
-        "children"
-      ],
-      "optional": []
-    },
-    "spacer": {
-      "required": [],
-      "optional": [
-        "height",
-        "width",
-        "weight"
-      ]
-    },
-    "divider": {
-      "required": [],
-      "optional": []
-    },
-    "card": {
-      "required": [
-        "children"
-      ],
-      "optional": [
-        "on_tap",
-        "on_swipe",
-        "swipe_start",
-        "swipe_end",
-        "padding",
-        "weight",
-        "width",
-        "height",
-        "fill_fraction",
-        "border"
-      ]
-    },
-    "collapsible": {
-      "required": [
-        "id",
-        "header",
-        "children"
-      ],
-      "optional": [
-        "collapsed",
-        "on_long_tap",
-        "on_swipe",
-        "swipe_start",
-        "swipe_end"
-      ]
-    },
-    "reorderable_list": {
-      "required": [
-        "items"
-      ],
-      "optional": [
-        "on_reorder"
-      ]
-    },
-    "table": {
-      "required": [
-        "rows"
-      ],
-      "optional": [
-        "aligns",
-        "on_add_row",
-        "on_add_col",
-        "padding"
-      ]
-    },
-    "tabs": {
-      "required": [
-        "items",
-        "children"
-      ],
-      "optional": [
-        "initial",
-        "scrollable",
-        "pager_only",
-        "on_change",
-        "id"
-      ]
-    },
-    "chart": {
-      "required": [
-        "series"
-      ],
-      "optional": [
-        "kind",
-        "height",
-        "y_range",
-        "summary",
-        "on_point_tap",
-        "children"
-      ]
-    },
-    "canvas": {
-      "required": [
-        "width",
-        "height",
-        "ops"
-      ],
-      "optional": [
-        "children"
-      ]
-    },
-    "month_grid": {
-      "required": [
-        "month"
-      ],
-      "optional": [
-        "marks",
-        "selected",
-        "min_month",
-        "max_month",
-        "on_day_tap",
-        "on_month_change",
-        "children"
-      ]
+      "required": ["spans"],
+      "optional": ["style"]
     },
     "icon": {
-      "required": [
-        "name"
-      ],
-      "optional": [
-        "size",
-        "color",
-        "padding",
-        "badge"
-      ]
+      "required": ["name"],
+      "optional": ["size", "color", "badge", "content_description"]
     },
     "image": {
-      "required": [
-        "url"
-      ],
-      "optional": [
-        "content_description",
-        "padding",
-        "width",
-        "height",
-        "aspect_ratio",
-        "content_scale"
-      ]
+      "required": ["url"],
+      "optional": ["content_description", "content_scale"]
     },
     "date_stamp": {
       "required": [],
-      "optional": [
-        "day",
-        "month",
-        "month_index",
-        "year",
-        "time",
-        "padding"
-      ]
+      "optional": ["day", "month", "month_index", "year", "time"]
     },
     "section_header": {
-      "required": [
-        "title"
-      ],
-      "optional": [
-        "trailing",
-        "padding"
-      ]
+      "required": ["title"],
+      "optional": ["trailing"]
     },
     "empty_state": {
       "required": [],
-      "optional": [
-        "icon",
-        "title",
-        "caption",
-        "on_tap",
-        "action_label",
-        "padding"
-      ]
+      "optional": ["icon", "title", "caption", "action_label", "on_tap"]
     },
     "progress": {
       "required": [],
-      "optional": [
-        "variant",
-        "value",
-        "padding"
-      ]
-    },
-    "menu": {
-      "required": [
-        "items"
-      ],
-      "optional": [
-        "icon",
-        "padding"
-      ]
-    },
-    "button": {
-      "required": [
-        "label",
-        "on_tap"
-      ],
-      "optional": [
-        "icon",
-        "variant",
-        "weight",
-        "padding"
-      ]
-    },
-    "icon_button": {
-      "required": [
-        "icon",
-        "on_tap"
-      ],
-      "optional": [
-        "content_description",
-        "padding",
-        "badge"
-      ]
-    },
-    "chip": {
-      "required": [
-        "label"
-      ],
-      "optional": [
-        "on_tap",
-        "selected",
-        "icon",
-        "padding"
-      ]
-    },
-    "assist_chip": {
-      "required": [
-        "label"
-      ],
-      "optional": [
-        "on_tap",
-        "icon",
-        "padding"
-      ]
+      "optional": ["variant", "value"]
     },
     "badge": {
-      "required": [
-        "label"
-      ],
-      "optional": [
-        "icon",
-        "color",
-        "padding",
-        "children"
-      ]
+      "required": ["label"],
+      "optional": ["icon", "color", "children"]
+    },
+    "row": {
+      "required": ["children"],
+      "optional": ["spacing", "align", "arrange", "scroll", "fill"]
+    },
+    "column": {
+      "required": ["children"],
+      "optional": ["spacing", "align", "arrange", "scroll", "fill"]
+    },
+    "flow_row": {
+      "required": ["children"],
+      "optional": ["spacing", "run_spacing", "align", "arrange"]
+    },
+    "box": {
+      "required": ["children"],
+      "optional": ["alignment", "on_tap"]
+    },
+    "surface": {
+      "required": ["children"],
+      "optional": ["color", "shape", "elevation"]
+    },
+    "lazy_column": {
+      "required": ["children"],
+      "optional": ["spacing", "content_padding"]
+    },
+    "spacer": {
+      "required": [],
+      "optional": []
+    },
+    "divider": {
+      "required": [],
+      "optional": ["color", "thickness"]
+    },
+    "card": {
+      "required": ["children"],
+      "optional": ["on_tap", "on_long_tap", "swipe_start", "swipe_end"]
+    },
+    "collapsible": {
+      "required": ["id", "header", "children"],
+      "optional": ["collapsed", "on_long_tap", "swipe_start", "swipe_end"]
+    },
+    "reorderable_list": {
+      "required": ["items"],
+      "optional": ["on_reorder"]
+    },
+    "tabs": {
+      "required": ["items", "children"],
+      "optional": ["initial", "scrollable", "pager_only", "on_change", "id"]
+    },
+    "table": {
+      "required": ["rows"],
+      "optional": ["aligns", "on_add_row", "on_add_col"]
+    },
+    "button": {
+      "required": ["label", "on_tap"],
+      "optional": ["icon", "variant", "enabled"]
+    },
+    "icon_button": {
+      "required": ["icon", "on_tap"],
+      "optional": ["content_description", "badge", "enabled"]
+    },
+    "chip": {
+      "required": ["label"],
+      "optional": ["on_tap", "selected", "icon", "enabled"]
+    },
+    "assist_chip": {
+      "required": ["label"],
+      "optional": ["on_tap", "icon", "enabled"]
+    },
+    "menu": {
+      "required": ["items"],
+      "optional": ["icon", "enabled"]
     },
     "text_input": {
-      "required": [
-        "id"
-      ],
-      "optional": [
-        "value",
-        "hint",
-        "label",
-        "on_submit",
-        "single_line",
-        "min_lines",
-        "max_lines",
-        "monospace",
-        "syntax",
-        "password",
-        "keyboard",
-        "autofocus",
-        "clear_on_submit",
-        "padding"
-      ]
+      "required": ["id"],
+      "optional": ["value", "hint", "label", "on_change", "on_submit", "single_line", "min_lines", "max_lines", "monospace", "syntax", "password", "keyboard", "autofocus", "clear_on_submit", "enabled"]
     },
     "editor": {
-      "required": [
-        "id"
-      ],
-      "optional": [
-        "value",
-        "on_save",
-        "on_enter",
-        "read_only",
-        "syntax",
-        "line_numbers",
-        "complete",
-        "chromeless",
-        "publish_state",
-        "autofocus",
-        "toolbar"
-      ]
+      "required": ["id"],
+      "optional": ["document", "value", "on_save", "on_enter", "read_only", "syntax", "line_numbers", "complete", "chromeless", "publish_state", "autofocus", "toolbar", "enabled"]
     },
     "checkbox": {
-      "required": [
-        "id"
-      ],
-      "optional": [
-        "checked",
-        "label",
-        "on_change",
-        "padding"
-      ]
+      "required": ["id"],
+      "optional": ["checked", "label", "on_change", "enabled"]
     },
     "switch": {
-      "required": [
-        "id"
-      ],
-      "optional": [
-        "checked",
-        "label",
-        "on_change",
-        "padding"
-      ]
+      "required": ["id"],
+      "optional": ["checked", "label", "on_change", "enabled"]
     },
     "enum_list": {
-      "required": [
-        "id",
-        "options"
-      ],
-      "optional": [
-        "value",
-        "multi_select",
-        "allow_add",
-        "on_change",
-        "padding"
-      ]
+      "required": ["id", "options"],
+      "optional": ["value", "multi_select", "allow_add", "on_change", "enabled"]
     },
     "date_button": {
-      "required": [
-        "label",
-        "on_pick"
-      ],
-      "optional": [
-        "value"
-      ]
+      "required": ["label", "on_pick"],
+      "optional": ["value", "enabled"]
     },
     "time_button": {
-      "required": [
-        "label",
-        "on_pick"
-      ],
-      "optional": [
-        "value"
-      ]
+      "required": ["label", "on_pick"],
+      "optional": ["value", "enabled"]
     },
     "slider": {
-      "required": [
-        "id",
-        "on_change"
-      ],
-      "optional": [
-        "value",
-        "min",
-        "max",
-        "steps"
-      ]
+      "required": ["id", "on_change"],
+      "optional": ["value", "min", "max", "values", "enabled"]
+    },
+    "chart": {
+      "required": ["series"],
+      "optional": ["kind", "height", "y_range", "summary", "on_point_tap", "children"]
+    },
+    "canvas": {
+      "required": ["width", "height", "ops"],
+      "optional": ["children"]
+    },
+    "month_grid": {
+      "required": ["month"],
+      "optional": ["marks", "selected", "min_month", "max_month", "on_day_tap", "on_month_change", "children"]
     },
     "scaffold": {
       "required": [],
-      "optional": [
-        "top_bar",
-        "fab",
-        "body",
-        "bottom_bar",
-        "floating_toolbar",
-        "snackbar",
-        "snackbar_action",
-        "drawer",
-        "on_refresh"
-      ]
+      "optional": ["top_bar", "body", "bottom_bar", "fab", "floating_toolbar", "drawer", "snackbar", "snackbar_action", "on_refresh"]
+    }
+  },
+  "field_types": {
+    "text": "string",
+    "label": "string",
+    "title": "string",
+    "caption": "string",
+    "hint": "string",
+    "content_description": "string",
+    "annotation": "string",
+    "summary": "string",
+    "action_label": "string",
+    "snackbar": "string",
+    "url": "string",
+    "name": "identifier",
+    "icon": "identifier",
+    "syntax": "identifier",
+    "id": "identifier",
+    "key": "identifier",
+    "document": "identifier",
+    "keyboard": "enum",
+    "children": "node-array",
+    "items": "varies-per-node",
+    "rows": "table-row-array",
+    "spans": "rich-span-array",
+    "series": "chart-series-array",
+    "ops": "canvas-op-array",
+    "options": "enum-option-array",
+    "header": "node",
+    "trailing": "node",
+    "top_bar": "node",
+    "body": "node",
+    "bottom_bar": "node",
+    "fab": "node",
+    "floating_toolbar": "node",
+    "drawer": "node",
+    "color": "color",
+    "bg": "color",
+    "selectable": "boolean",
+    "selected": "boolean",
+    "scroll": "boolean",
+    "fill": "boolean",
+    "collapsed": "boolean",
+    "scrollable": "boolean",
+    "pager_only": "boolean",
+    "single_line": "boolean",
+    "monospace": "boolean",
+    "password": "boolean",
+    "autofocus": "boolean",
+    "clear_on_submit": "boolean",
+    "read_only": "boolean",
+    "line_numbers": "boolean",
+    "complete": "boolean",
+    "chromeless": "boolean",
+    "publish_state": "boolean",
+    "checked": "boolean",
+    "multi_select": "boolean",
+    "allow_add": "boolean",
+    "enabled": "boolean",
+    "italic": "boolean",
+    "underline": "boolean",
+    "mono": "boolean",
+    "clip": "boolean",
+    "scroll_here": "boolean",
+    "size": "dp",
+    "spacing": "dp",
+    "run_spacing": "dp",
+    "content_padding": "dp",
+    "elevation": "dp",
+    "thickness": "dp",
+    "padding": "dp",
+    "min_lines": "positive-integer",
+    "max_lines": "positive-integer",
+    "initial": "non-negative-integer",
+    "day": "integer-1-31",
+    "month_index": "integer-1-12",
+    "year": "non-negative-integer",
+    "value": "varies-per-node",
+    "min": "number",
+    "max": "number",
+    "values": "number-array",
+    "height": "number",
+    "width": "number",
+    "y_range": "two-number-array",
+    "month": "yyyy-mm",
+    "min_month": "yyyy-mm",
+    "max_month": "yyyy-mm",
+    "font_weight": "font-weight",
+    "toolbar": "toolbar-id-or-item-array",
+    "snackbar_action": "label-on-tap-object",
+    "swipe_start": "swipe-object",
+    "swipe_end": "swipe-object",
+    "badge": "string-or-number",
+    "marks": "date-marks-object",
+    "aligns": "align-array",
+    "time": "string"
+  },
+  "enums": {
+    "text.style": ["body", "title", "headline", "caption", "label", "mono"],
+    "rich_text.style": ["body", "title", "headline", "caption", "label", "mono"],
+    "progress.variant": ["circular", "linear"],
+    "button.variant": ["filled", "tonal", "outlined", "text"],
+    "image.content_scale": ["fit", "crop", "fill"],
+    "row.align": ["top", "center", "bottom", "baseline"],
+    "column.align": ["start", "center", "end"],
+    "flow_row.align": ["top", "center", "bottom"],
+    "arrange": ["start", "center", "end", "space_between", "space_around", "space_evenly"],
+    "box.alignment": ["top_start", "top_center", "top_end", "center_start", "center", "center_end", "bottom_start", "bottom_center", "bottom_end"],
+    "surface.shape": ["rounded", "rounded_small", "circle"],
+    "chart.kind": ["line", "bar", "area", "sparkline"],
+    "canvas.op": ["line", "rect", "circle", "path", "text"],
+    "text_input.keyboard": ["text", "number", "decimal", "email", "phone", "uri"],
+    "align_self": ["start", "center", "end", "stretch"],
+    "dialog.style": ["dialog", "sheet", "sheet_full"],
+    "notification.priority": ["min", "low", "default", "high", "max"],
+    "diagnostic.severity": ["error", "warning", "info", "hint"],
+    "toolbar.placement": ["cursor", "line-start", "block"]
+  },
+  "actions": {
+    "hook_keys": [
+      "on_tap",
+      "on_change",
+      "on_submit",
+      "on_save",
+      "on_enter",
+      "on_pick",
+      "on_reorder",
+      "on_refresh",
+      "on_long_tap",
+      "on_add_row",
+      "on_add_col",
+      "on_day_tap",
+      "on_month_change",
+      "on_point_tap",
+      "on_trigger",
+      "header_action"
+    ],
+    "descriptor_fields": [
+      "action",
+      "builtin",
+      "args",
+      "when_offline",
+      "dedupe",
+      "ttl_s",
+      "confirm",
+      "capture_fields"
+    ],
+    "offline_policies": ["drop", "queue", "wake"],
+    "offline_default": "drop",
+    "schema": {
+      "remote": {
+        "required": ["action"],
+        "optional": ["args", "when_offline", "dedupe", "ttl_s", "confirm", "capture_fields"]
+      },
+      "view.switch": {
+        "required": ["builtin", "view"],
+        "optional": []
+      },
+      "clipboard.copy": {
+        "required": ["builtin", "text"],
+        "optional": []
+      },
+      "share.send": {
+        "required": ["builtin", "text"],
+        "optional": ["title"]
+      },
+      "companion.settings.open": {
+        "required": ["builtin"],
+        "optional": []
+      },
+      "trigger.fire": {
+        "required": ["builtin", "id"],
+        "optional": []
+      },
+      "dialog.submit": {
+        "required": ["builtin"],
+        "optional": ["value", "capture_fields"]
+      },
+      "dialog.dismiss": {
+        "required": ["builtin"],
+        "optional": []
+      }
+    },
+    "injections": {
+      "on_change": ["value"],
+      "on_submit": ["value"],
+      "on_save": ["value"],
+      "on_enter": ["value"],
+      "on_pick": ["value"],
+      "on_reorder": ["from", "to", "order"],
+      "on_trigger": ["direction"],
+      "on_add_row": ["index"],
+      "on_add_col": ["index"],
+      "on_day_tap": ["value"],
+      "on_month_change": ["value"],
+      "on_point_tap": ["value"]
     }
   },
   "methods": {
     "session.hello": {
-      "direction": "client",
-      "type": "request",
+      "sender": "emacs",
+      "class": "request",
+      "states": ["CONNECTED"],
+      "capability": "core",
       "params": {
-        "required": [
-          "protocol",
-          "client",
-          "wants"
-        ],
-        "optional": [
-          "features"
-        ]
+        "required": ["protocol", "client", "pairing_id", "client_nonce", "wants"],
+        "optional": []
       },
       "result": {
-        "required": [
-          "nonce"
-        ],
+        "required": ["server_nonce"],
         "optional": []
-      }
+      },
+      "errors": [1202, -32602]
     },
     "auth.response": {
-      "direction": "client",
-      "type": "request",
+      "sender": "emacs",
+      "class": "request",
+      "states": ["CHALLENGED"],
+      "capability": "core",
       "params": {
-        "required": [
-          "nonce",
-          "mac"
-        ],
+        "required": ["pairing_id", "client_nonce", "server_nonce", "client_proof"],
         "optional": []
       },
       "result": {
-        "required": [
-          "server_proof",
-          "granted",
-          "node_types",
-          "surfaces",
-          "queued_events"
-        ],
-        "optional": [
-          "protocol",
-          "server",
-          "device",
-          "input_state",
-          "can_disable"
-        ]
-      }
-    },
-    "capability.invoke": {
-      "direction": "client",
-      "type": "request",
-      "params": {
-        "required": [
-          "cap"
-        ],
-        "optional": [
-          "args"
-        ]
+        "required": ["server_proof", "protocol", "server", "granted", "surface_profiles", "surfaces", "queued_events", "limits"],
+        "optional": ["input_state", "device"]
       },
-      "result": {
-        "required": [],
-        "optional": [
-          "result"
-        ]
-      }
+      "errors": [1203, -32602]
     },
-    "queue.replay": {
-      "direction": "client",
-      "type": "request",
+    "session.ready": {
+      "sender": "emacs",
+      "class": "request",
+      "states": ["SYNCING"],
+      "capability": "core",
       "params": {
         "required": [],
         "optional": []
       },
       "result": {
-        "required": [
-          "delivered",
-          "expired"
-        ],
-        "optional": [
-          "duplicate_request"
-        ]
-      }
-    },
-    "triggers.set": {
-      "direction": "client",
-      "type": "request",
-      "params": {
-        "required": [
-          "triggers"
-        ],
-        "optional": []
-      },
-      "result": {
         "required": [],
         "optional": []
-      }
-    },
-    "reminders.set": {
-      "direction": "client",
-      "type": "request",
-      "params": {
-        "required": [
-          "reminders"
-        ],
-        "optional": [
-          "owner"
-        ]
       },
-      "result": {
-        "required": [],
-        "optional": []
-      }
+      "errors": [1204]
     },
     "surface.update": {
-      "direction": "client",
-      "type": "notification",
+      "sender": "emacs",
+      "class": "request",
+      "states": ["SYNCING", "READY"],
+      "capability": "core-or-surface-capability",
       "params": {
-        "required": [
-          "surface",
-          "revision",
-          "spec"
-        ],
-        "optional": [
-          "ttl_s",
-          "stale_spec",
-          "current_view"
-        ]
-      }
+        "required": ["surface", "revision", "spec"],
+        "optional": ["stale_after_s", "stale_spec", "current_view", "reset_input_ids"]
+      },
+      "result": {
+        "required": ["status", "revision", "present"],
+        "optional": []
+      },
+      "result_status": ["applied", "stale"],
+      "errors": [1201, -32602]
     },
     "surface.remove": {
-      "direction": "client",
-      "type": "notification",
+      "sender": "emacs",
+      "class": "request",
+      "states": ["SYNCING", "READY"],
+      "capability": "core",
       "params": {
-        "required": [
-          "surface"
-        ],
+        "required": ["surface", "revision"],
         "optional": []
-      }
+      },
+      "result": {
+        "required": ["status", "revision", "present"],
+        "optional": []
+      },
+      "result_status": ["applied", "stale"],
+      "errors": [1201, -32602]
+    },
+    "queue.replay": {
+      "sender": "emacs",
+      "class": "request",
+      "states": ["SYNCING", "READY"],
+      "capability": "core",
+      "params": {
+        "required": [],
+        "optional": []
+      },
+      "result": {
+        "required": ["delivered", "rejected", "expired", "remaining", "blocked_by"],
+        "optional": []
+      },
+      "errors": [1600]
     },
     "event.action": {
-      "direction": "companion",
-      "type": "notification",
+      "sender": "companion",
+      "class": "request",
+      "states": ["SYNCING", "READY"],
+      "capability": "core",
       "params": {
-        "required": [
-          "action"
-        ],
-        "optional": [
-          "args",
-          "surface",
-          "revision_seen",
-          "fields",
-          "queued_at"
-        ]
-      }
+        "required": ["event_id", "action", "occurred_at_ms"],
+        "optional": ["args", "surface", "revision_seen", "dialog_id", "fields", "queued_at_ms"]
+      },
+      "result": {
+        "required": ["status"],
+        "optional": ["message"]
+      },
+      "result_status": ["accepted", "duplicate", "stale", "rejected"],
+      "errors": [1500, 1301]
     },
     "state.changed": {
-      "direction": "companion",
-      "type": "notification",
+      "sender": "companion",
+      "class": "notification",
+      "states": ["READY"],
+      "capability": "core",
       "params": {
-        "required": [
-          "id",
-          "value"
-        ],
-        "optional": [
-          "surface"
-        ]
+        "required": ["surface", "revision_seen", "id", "value"],
+        "optional": []
       }
     },
     "dialog.show": {
-      "direction": "client",
-      "type": "notification",
-      "params": "node"
-    },
-    "dialog.dismiss": {
-      "direction": "client",
-      "type": "notification",
+      "sender": "emacs",
+      "class": "request",
+      "states": ["READY"],
+      "capability": "surfaces.dialog",
       "params": {
-        "required": [],
-        "optional": []
+        "required": ["dialog_id", "spec"],
+        "optional": ["style"]
+      },
+      "result": {
+        "required": ["status"],
+        "optional": ["value", "fields"]
+      },
+      "result_status": ["submitted", "dismissed"],
+      "errors": [1201, 1401, 1301]
+    },
+    "toast.show": {
+      "sender": "emacs",
+      "class": "notification",
+      "states": ["READY"],
+      "capability": "presentation.toast",
+      "params": {
+        "required": ["text"],
+        "optional": ["duration_s"]
       }
     },
     "pie_menu.show": {
-      "direction": "client",
-      "type": "notification",
+      "sender": "emacs",
+      "class": "notification",
+      "states": ["READY"],
+      "capability": "presentation.pie-menu",
       "params": {
-        "required": [
-          "categories"
-        ],
-        "optional": [
-          "center_label",
-          "buffer"
-        ]
+        "required": ["menu_id", "categories"],
+        "optional": ["center_label"]
       }
     },
     "pie_menu.dismiss": {
-      "direction": "client",
-      "type": "notification",
+      "sender": "emacs",
+      "class": "notification",
+      "states": ["READY"],
+      "capability": "presentation.pie-menu",
       "params": {
-        "required": [],
-        "optional": []
-      }
-    },
-    "toast.show": {
-      "direction": "client",
-      "type": "notification",
-      "params": {
-        "required": [
-          "text"
-        ],
+        "required": ["menu_id"],
         "optional": []
       }
     },
     "theme.set": {
-      "direction": "client",
-      "type": "notification",
+      "sender": "emacs",
+      "class": "notification",
+      "states": ["SYNCING", "READY"],
+      "capability": "theme",
       "params": {
         "required": [],
-        "optional": [
-          "dark",
-          "colors",
-          "syntax"
-        ]
+        "optional": ["dark", "colors", "syntax"]
       }
     },
-    "completions.show": {
-      "direction": "client",
-      "type": "notification",
+    "reminders.set": {
+      "sender": "emacs",
+      "class": "request",
+      "states": ["SYNCING", "READY"],
+      "capability": "reminders.owner",
       "params": {
-        "required": [
-          "id",
-          "request_id",
-          "prefix",
-          "candidates"
-        ],
+        "required": ["owner", "reminders"],
+        "optional": []
+      },
+      "result": {
+        "required": ["count"],
+        "optional": []
+      },
+      "errors": [1201, -32602]
+    },
+    "edit.open": {
+      "sender": "companion",
+      "class": "notification",
+      "states": ["READY"],
+      "capability": "editor.sync",
+      "params": {
+        "required": ["document", "editor_id", "session", "seq", "text", "cursor"],
+        "optional": ["sel_start", "sel_end"]
+      }
+    },
+    "edit.delta": {
+      "sender": "companion",
+      "class": "notification",
+      "states": ["READY"],
+      "capability": "editor.sync",
+      "params": {
+        "required": ["document", "editor_id", "session", "seq", "start", "del", "text", "len"],
         "optional": []
       }
     },
-    "diagnostics.show": {
-      "direction": "client",
-      "type": "notification",
+    "edit.caret": {
+      "sender": "companion",
+      "class": "notification",
+      "states": ["READY"],
+      "capability": "editor.sync",
       "params": {
-        "required": [
-          "id",
-          "session",
-          "seq",
-          "diags"
-        ],
+        "required": ["document", "editor_id", "session", "seq", "cursor"],
+        "optional": ["sel_start", "sel_end"]
+      }
+    },
+    "edit.close": {
+      "sender": "companion",
+      "class": "notification",
+      "states": ["READY"],
+      "capability": "editor.sync",
+      "params": {
+        "required": ["document", "editor_id", "session"],
+        "optional": []
+      }
+    },
+    "edit.complete": {
+      "sender": "companion",
+      "class": "request",
+      "states": ["READY"],
+      "capability": "editor.sync",
+      "params": {
+        "required": ["document", "editor_id", "session", "seq", "cursor"],
+        "optional": []
+      },
+      "result": {
+        "required": ["prefix", "candidates"],
+        "optional": []
+      },
+      "errors": [1201]
+    },
+    "edit.resync": {
+      "sender": "emacs",
+      "class": "request",
+      "states": ["READY"],
+      "capability": "editor.sync",
+      "params": {
+        "required": ["document", "editor_id", "session"],
+        "optional": []
+      },
+      "result": {
+        "required": ["document", "editor_id", "session", "seq", "text", "cursor"],
+        "optional": ["sel_start", "sel_end"]
+      },
+      "errors": [1201]
+    },
+    "edit.apply": {
+      "sender": "emacs",
+      "class": "request",
+      "states": ["READY"],
+      "capability": "editor.sync",
+      "params": {
+        "required": ["document", "editor_id", "session", "seq", "cursor"],
+        "optional": ["start", "del", "text", "len", "sel_start", "sel_end"]
+      },
+      "result": {
+        "required": ["status", "seq"],
+        "optional": []
+      },
+      "result_status": ["applied", "stale"],
+      "errors": [1201]
+    },
+    "diagnostics.show": {
+      "sender": "emacs",
+      "class": "notification",
+      "states": ["READY"],
+      "capability": "editor.sync",
+      "params": {
+        "required": ["editor_id", "session", "seq", "diagnostics"],
         "optional": []
       }
     },
     "eldoc.show": {
-      "direction": "client",
-      "type": "notification",
+      "sender": "emacs",
+      "class": "notification",
+      "states": ["READY"],
+      "capability": "editor.sync",
       "params": {
-        "required": [
-          "id",
-          "session",
-          "text"
-        ],
+        "required": ["editor_id", "session", "seq", "text"],
         "optional": []
       }
     },
     "fontify.show": {
-      "direction": "client",
-      "type": "notification",
+      "sender": "emacs",
+      "class": "notification",
+      "states": ["READY"],
+      "capability": "editor.sync",
       "params": {
-        "required": [
-          "id",
-          "session",
-          "seq",
-          "runs"
-        ],
+        "required": ["editor_id", "session", "seq", "runs"],
         "optional": []
       }
     },
-    "edit.resync": {
-      "direction": "client",
-      "type": "notification",
+    "capability.invoke": {
+      "sender": "emacs",
+      "class": "request",
+      "states": ["READY"],
+      "capability": "capabilities",
       "params": {
-        "required": [
-          "id",
-          "session"
-        ],
-        "optional": []
-      }
+        "required": ["cap"],
+        "optional": ["args"]
+      },
+      "result": "catalog",
+      "errors": [1001, 1002, 1003, -32602]
     },
-    "edit.apply": {
-      "direction": "client",
-      "type": "notification",
+    "triggers.set": {
+      "sender": "emacs",
+      "class": "request",
+      "states": ["SYNCING", "READY"],
+      "capability": "triggers",
       "params": {
-        "required": [
-          "id",
-          "session",
-          "seq",
-          "cursor"
-        ],
-        "optional": [
-          "start",
-          "del",
-          "text",
-          "len",
-          "sel_start",
-          "sel_end"
-        ]
-      }
+        "required": ["triggers"],
+        "optional": []
+      },
+      "result": {
+        "required": ["count"],
+        "optional": []
+      },
+      "errors": [1101, -32602]
     },
     "log.error": {
-      "direction": "companion",
-      "type": "notification",
+      "sender": "either",
+      "class": "notification",
+      "states": ["SYNCING", "READY"],
+      "capability": "core",
       "params": {
-        "required": [
-          "code",
-          "message"
-        ],
-        "optional": [
-          "data"
-        ]
+        "required": ["code", "message"],
+        "optional": ["data"]
       }
     },
     "rpc.cancel": {
-      "direction": "both",
-      "type": "notification",
+      "sender": "either",
+      "class": "notification",
+      "states": ["SYNCING", "READY"],
+      "capability": "core",
       "params": {
-        "required": [
-          "id"
-        ],
+        "required": ["id"],
         "optional": []
       }
     }
@@ -837,203 +787,238 @@
   "error_codes": {
     "-32700": {
       "kind": "parse-error",
-      "context": "unparseable frame"
+      "meaning": "JSON-RPC Parse Error"
     },
     "-32600": {
       "kind": "invalid-request",
-      "context": "not JSON-RPC 2.0 / prohibited batch / wrong direction or class"
+      "meaning": "JSON-RPC Invalid Request"
     },
     "-32601": {
       "kind": "method-not-found",
-      "context": "unknown request method"
+      "meaning": "JSON-RPC Method not found"
     },
     "-32602": {
       "kind": "invalid-params",
-      "context": "JSON-RPC standard set, reserved"
+      "meaning": "JSON-RPC Invalid params"
     },
     "-32603": {
-      "kind": "internal",
-      "context": "handler signalled"
+      "kind": "internal-error",
+      "meaning": "JSON-RPC Internal error"
     },
     "1001": {
       "kind": "cap-unsupported",
-      "context": "capability.invoke"
+      "meaning": "Capability was not advertised or is unavailable"
     },
     "1002": {
       "kind": "cap-permission",
-      "context": "capability.invoke; remedy rides data (perm, settings)"
+      "meaning": "User or platform permission is required"
     },
     "1003": {
       "kind": "cap-failed",
-      "context": "capability.invoke"
+      "meaning": "Advertised capability failed"
     },
     "1101": {
       "kind": "triggers-rejected",
-      "context": "triggers.set wholesale rejection"
+      "meaning": "Trigger replace-set was rejected atomically"
     },
     "1200": {
       "kind": "not-authenticated",
-      "context": "any method before the proof completes"
+      "meaning": "Method is not legal before authentication"
     },
     "1201": {
-      "kind": "spec-invalid",
-      "context": "malformed params"
+      "kind": "content-invalid",
+      "meaning": "Structurally valid params contain an invalid surface, node, action, or module object"
     },
     "1202": {
-      "kind": "proto-version",
-      "context": "protocol mismatch at hello"
+      "kind": "protocol-version",
+      "meaning": "No compatible protocol major version exists"
     },
     "1203": {
       "kind": "auth-failed",
-      "context": "bad MAC"
+      "meaning": "Authentication proof failed"
+    },
+    "1204": {
+      "kind": "session-state",
+      "meaning": "Method is not legal in the current session state"
     },
     "1301": {
       "kind": "request-cancelled",
-      "context": "the answer to a cancelled request"
-    },
-    "1400": {
-      "kind": "frame-too-large",
-      "context": "frame-cap refusal, rides log.error"
+      "meaning": "Request was cancelled"
     },
     "1401": {
       "kind": "overloaded",
-      "context": "bounded-queue exhaustion, rides log.error"
+      "meaning": "Bounded processing capacity was exhausted"
+    },
+    "1500": {
+      "kind": "event-retry",
+      "meaning": "Event could not be accepted yet and remains eligible for retry"
+    },
+    "1600": {
+      "kind": "queue-busy",
+      "meaning": "A queue replay is already active"
+    },
+    "1601": {
+      "kind": "queue-full",
+      "meaning": "Durable queue capacity is exhausted"
     }
   },
-  "action_hook_keys": [
-    "on_tap",
-    "on_change",
-    "on_submit",
-    "on_save",
-    "on_enter",
-    "on_pick",
-    "on_reorder",
-    "on_refresh",
-    "nav_action",
-    "on_long_tap",
-    "on_swipe",
-    "on_add_row",
-    "on_add_col",
-    "on_trigger",
-    "on_day_tap",
-    "on_month_change",
-    "on_point_tap",
-    "on_button"
-  ],
-  "action_fields": [
-    "action",
-    "builtin",
-    "args",
-    "when_offline",
-    "dedupe",
-    "confirm"
-  ],
-  "offline_policies": [
-    "queue",
-    "drop",
-    "wake"
-  ],
-  "offline_default": "queue",
-  "action_schema": {
-    "remote": {
-      "required": [
-        "action"
-      ],
-      "optional": [
-        "args",
-        "when_offline",
-        "dedupe",
-        "confirm"
-      ]
+  "limits": {
+    "fixed": {
+      "max_header_bytes": 8192,
+      "max_body_bytes": 4194304,
+      "max_json_depth": 64,
+      "max_nodes_per_snapshot": 10000,
+      "max_children_per_node": 10000,
+      "max_identifier_bytes": 128,
+      "max_request_id_bytes": 64
     },
-    "view.switch": {
-      "required": [
-        "builtin",
-        "view"
-      ],
-      "optional": []
-    },
-    "clipboard.copy": {
-      "required": [
-        "builtin",
-        "text"
-      ],
-      "optional": []
-    },
-    "share.send": {
-      "required": [
-        "builtin",
-        "text"
-      ],
-      "optional": [
-        "title"
-      ]
-    },
-    "companion.settings.open": {
-      "required": [
-        "builtin"
-      ],
-      "optional": []
+    "welcome": {
+      "max_frame_bytes": {"requirement": "required", "exact": 4194304},
+      "max_queued_events": {"requirement": "required", "min": 256},
+      "max_queued_bytes": {"requirement": "required", "min": 8388608},
+      "max_event_bytes": {"requirement": "required", "min": 262144, "max_expr": "max_frame_bytes - 256"},
+      "max_surfaces": {"requirement": "required", "min": 16},
+      "max_surface_ids": {"requirement": "required", "min": 1024},
+      "max_field_bytes": {"requirement": "required", "min": 65536, "max_expr": "max_frame_bytes - 2048"},
+      "max_input_state_bytes": {"requirement": "required", "min": 262144},
+      "max_capture_fields": {"requirement": "required", "min": 64},
+      "max_triggers": {"requirement": "when triggers granted"},
+      "max_trigger_responses": {"requirement": "when triggers granted"},
+      "max_reminders": {"requirement": "when reminders.owner granted"},
+      "max_editor_sessions": {"requirement": "when editor.sync granted"},
+      "max_dialogs": {"requirement": "when surfaces.dialog granted"},
+      "max_pie_menus": {"requirement": "when presentation.pie-menu granted", "min": 1},
+      "max_image_bytes": {"requirement": "when image advertised"},
+      "max_decoded_image_bytes": {"requirement": "when image advertised"},
+      "max_image_pixels": {"requirement": "when image advertised"},
+      "max_canvas_ops": {"requirement": "when canvas advertised"},
+      "max_chart_points": {"requirement": "when chart advertised"},
+      "max_rich_spans": {"requirement": "when rich_text advertised"},
+      "max_table_cells": {"requirement": "when table advertised"},
+      "max_shortcut_icon_bytes": {"requirement": "when shortcut.pin or shortcuts.set advertised"},
+      "max_shortcuts": {"requirement": "when shortcuts.set advertised"}
     }
+  },
+  "capabilities": [
+    "surfaces.notification",
+    "surfaces.widget",
+    "surfaces.dialog",
+    "presentation.toast",
+    "presentation.pie-menu",
+    "theme",
+    "reminders.owner",
+    "editor.sync",
+    "capabilities",
+    "triggers",
+    "offline.wake"
+  ],
+  "device_capabilities": [
+    "settings.open",
+    "intent.start",
+    "app.launch",
+    "apps.list",
+    "shortcut.pin",
+    "shortcuts.set",
+    "vibrate",
+    "tts.speak",
+    "volume.set",
+    "ringer.mode",
+    "flashlight",
+    "media.key",
+    "clipboard.read",
+    "screen.keep_on",
+    "brightness.set",
+    "dnd.set",
+    "state.get",
+    "trigger.fire"
+  ],
+  "trigger_caps_excluded": [
+    "settings.open",
+    "apps.list",
+    "clipboard.read",
+    "shortcut.pin",
+    "shortcuts.set",
+    "trigger.fire"
+  ],
+  "trigger_types": [
+    "time",
+    "power",
+    "battery.level",
+    "screen",
+    "headset",
+    "airplane",
+    "boot",
+    "timezone.changed",
+    "package",
+    "manual",
+    "state.edge",
+    "network",
+    "wifi.enabled",
+    "bluetooth.enabled",
+    "calendar.event",
+    "sms.received",
+    "call.state"
+  ],
+  "state_types": [
+    "power",
+    "battery.level",
+    "screen",
+    "airplane",
+    "network",
+    "headset",
+    "wifi.enabled",
+    "bluetooth.enabled",
+    "calendar.event",
+    "call.state"
+  ],
+  "predicate_only_state_types": [
+    "time.window"
+  ],
+  "trigger_schema": {
+    "required": ["id", "type"],
+    "optional": ["params", "when", "policy", "ttl_s", "dedupe", "throttle_s", "on_fire"]
+  },
+  "reminder_schema": {
+    "required": ["id", "title", "at_ms"],
+    "optional": ["body", "on_tap"]
   },
   "toolbar": {
-    "ops": [
-      "snippet",
-      "line",
-      "on_tap",
-      "menu",
-      "command"
-    ],
-    "placements": [
-      "cursor",
-      "line-start",
-      "block"
-    ],
-    "line_ops": [
-      "promote",
-      "demote",
-      "move-up",
-      "move-down"
-    ]
+    "ops": ["snippet", "on_tap", "menu", "command"],
+    "placements": ["cursor", "line-start", "block"],
+    "snippet_placeholders": ["${selection}", "${cursor}", "${input:Prompt}", "${date}", "${time}"]
   },
-  "binding": {
-    "layouts": [
-      "list",
-      "board",
-      "calendar"
-    ],
-    "transforms": [
-      "raw",
-      "string",
-      "date",
-      "date-label",
-      "tags-list",
-      "count",
-      "bool",
-      "ref"
-    ],
-    "spec_keys": [
-      "source",
-      "params",
-      "layout",
-      "template",
-      "header",
-      "group-by",
-      "empty-state",
-      "chrome"
-    ],
-    "chrome_kinds": [
-      "tab",
-      "nav"
-    ],
-    "source_field_types": [
-      "text",
-      "number",
-      "boolean",
-      "date",
-      "string-list",
-      "enum",
-      "ref"
-    ]
+  "theme_roles": [
+    "primary",
+    "on_primary",
+    "primary_container",
+    "on_primary_container",
+    "secondary",
+    "on_secondary",
+    "secondary_container",
+    "on_secondary_container",
+    "tertiary",
+    "on_tertiary",
+    "tertiary_container",
+    "on_tertiary_container",
+    "error",
+    "on_error",
+    "error_container",
+    "on_error_container",
+    "background",
+    "on_background",
+    "surface",
+    "on_surface",
+    "surface_variant",
+    "on_surface_variant",
+    "outline",
+    "success",
+    "warning"
+  ],
+  "notification_meta": {
+    "fields": ["channel", "ongoing", "category", "priority", "chronometer", "actions"],
+    "action_fields": {
+      "required": ["label", "on_tap"],
+      "optional": ["icon", "dismiss", "input"]
+    }
   }
 }

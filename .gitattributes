@@ -2,3 +2,6 @@
 # reference implementation's drift/conformance tests can diff them exactly.
 # Normalize everything to LF regardless of platform.
 * text=auto eol=lf
+# Wire Goldens are byte-exact framed fixtures (SPEC 24.5): CRLF framing
+# headers are part of the fixture and MUST NOT be normalized.
+goldens/wire/** -text

@@ -1,0 +1,225 @@
+{
+  "spec_version": "2.0.0-draft",
+  "framing": "content-length",
+  "fixtures": [
+    {
+      "file": "01-hello.bin",
+      "profile": "android-loopback-tcp",
+      "kind": "positive",
+      "rule": "6.1 sender syntax: exact Content-Length header, CRLF, UTF-8 body",
+      "expect_messages": [
+        {
+          "jsonrpc": "2.0",
+          "id": "h1",
+          "method": "session.hello",
+          "params": {
+            "protocol": 2,
+            "client": {
+              "name": "kat-client",
+              "version": "1.0.0"
+            },
+            "pairing_id": "101112131415161718191a1b1c1d1e1f",
+            "client_nonce": "202122232425262728292a2b2c2d2e2f",
+            "wants": []
+          }
+        }
+      ]
+    },
+    {
+      "file": "02-handshake.bin",
+      "profile": "android-loopback-tcp",
+      "kind": "positive",
+      "rule": "24.6 item 2: consecutive frames with no delimiter; 9.3 known-answer proofs are byte-exact",
+      "expect_messages": [
+        {
+          "jsonrpc": "2.0",
+          "id": "h1",
+          "method": "session.hello",
+          "params": {
+            "protocol": 2,
+            "client": {
+              "name": "kat-client",
+              "version": "1.0.0"
+            },
+            "pairing_id": "101112131415161718191a1b1c1d1e1f",
+            "client_nonce": "202122232425262728292a2b2c2d2e2f",
+            "wants": []
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": "h1",
+          "result": {
+            "server_nonce": "303132333435363738393a3b3c3d3e3f"
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": "h2",
+          "method": "auth.response",
+          "params": {
+            "pairing_id": "101112131415161718191a1b1c1d1e1f",
+            "client_nonce": "202122232425262728292a2b2c2d2e2f",
+            "server_nonce": "303132333435363738393a3b3c3d3e3f",
+            "client_proof": "03e270fd0af4566336283444b641a722b5828c190ebdbe3dc50c5be2c9c9fb43"
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": "h2",
+          "result": {
+            "server_proof": "e9333d48cfc2780d708db4a9782705c5e1c988c7eedc2d1734051f2fb9be58ec",
+            "protocol": 2,
+            "server": {
+              "name": "kat-companion",
+              "version": "1.0.0"
+            },
+            "granted": [],
+            "surface_profiles": {
+              "app": {
+                "node_types": [
+                  "text",
+                  "row",
+                  "column",
+                  "box",
+                  "spacer",
+                  "divider",
+                  "button",
+                  "text_input"
+                ],
+                "builtins": [
+                  "view.switch",
+                  "companion.settings.open"
+                ],
+                "features": []
+              }
+            },
+            "surfaces": {},
+            "queued_events": 0,
+            "limits": {
+              "max_frame_bytes": 4194304,
+              "max_queued_events": 256,
+              "max_queued_bytes": 8388608,
+              "max_event_bytes": 262144,
+              "max_surfaces": 16,
+              "max_surface_ids": 1024,
+              "max_field_bytes": 65536,
+              "max_input_state_bytes": 262144,
+              "max_capture_fields": 64
+            }
+          }
+        }
+      ],
+      "note": "client_proof/server_proof are the normative 9.3 KAT values"
+    },
+    {
+      "file": "03-utf8-length.bin",
+      "profile": "android-loopback-tcp",
+      "kind": "positive",
+      "rule": "24.6 item 1: non-ASCII UTF-8 body whose Content-Length (137) differs from its character count (131)",
+      "expect_messages": [
+        {
+          "jsonrpc": "2.0",
+          "method": "state.changed",
+          "params": {
+            "surface": "app:main",
+            "revision_seen": 42,
+            "id": "title",
+            "value": "caf\u00e9 \u2615 \u2014 na\u00efve"
+          }
+        }
+      ]
+    },
+    {
+      "file": "04-empty-params.bin",
+      "profile": "android-loopback-tcp",
+      "kind": "positive",
+      "rule": "7.1: a method with no parameters sends params {}",
+      "expect_messages": [
+        {
+          "jsonrpc": "2.0",
+          "id": "r1",
+          "method": "session.ready",
+          "params": {}
+        }
+      ]
+    },
+    {
+      "file": "10-partial-header.bin",
+      "profile": "android-loopback-tcp",
+      "kind": "negative",
+      "rule": "6.2/24.6 item 3: EOF inside a header terminates the session",
+      "expect_error": "incomplete-frame"
+    },
+    {
+      "file": "11-missing-length.bin",
+      "profile": "android-loopback-tcp",
+      "kind": "negative",
+      "rule": "6.2: header section without Content-Length closes the connection",
+      "expect_error": "close"
+    },
+    {
+      "file": "12-duplicate-length.bin",
+      "profile": "android-loopback-tcp",
+      "kind": "negative",
+      "rule": "6.2/24.6 item 3: more than one Content-Length closes the connection",
+      "expect_error": "close"
+    },
+    {
+      "file": "13-invalid-length.bin",
+      "profile": "android-loopback-tcp",
+      "kind": "negative",
+      "rule": "6.2: non-decimal Content-Length closes the connection",
+      "expect_error": "close"
+    },
+    {
+      "file": "14-signed-length.bin",
+      "profile": "android-loopback-tcp",
+      "kind": "negative",
+      "rule": "6.2: signed Content-Length closes the connection",
+      "expect_error": "close"
+    },
+    {
+      "file": "15-oversized-declaration.bin",
+      "profile": "android-loopback-tcp",
+      "kind": "negative",
+      "rule": "6.2/24.6 item 3: body declaration above 4194304 closes immediately",
+      "expect_error": "close"
+    },
+    {
+      "file": "16-invalid-utf8.bin",
+      "profile": "android-loopback-tcp",
+      "kind": "negative",
+      "rule": "6.2/24.6 item 3: invalid UTF-8 body is a JSON-RPC Parse Error",
+      "expect_error": "parse-error"
+    },
+    {
+      "file": "17-invalid-json.bin",
+      "profile": "android-loopback-tcp",
+      "kind": "negative",
+      "rule": "6.2/24.6 item 3: invalid JSON body is a JSON-RPC Parse Error",
+      "expect_error": "parse-error"
+    },
+    {
+      "file": "18-batch-array.bin",
+      "profile": "android-loopback-tcp",
+      "kind": "negative",
+      "rule": "6.2/24.6 item 3: top-level arrays (JSON-RPC batches) are prohibited",
+      "expect_error": "invalid-request"
+    },
+    {
+      "file": "19-duplicate-members.bin",
+      "profile": "android-loopback-tcp",
+      "kind": "negative",
+      "rule": "4.1/24.6 item 3: duplicate member names are rejected",
+      "expect_error": "invalid-request"
+    },
+    {
+      "file": "20-header-too-large.bin",
+      "profile": "android-loopback-tcp",
+      "kind": "negative",
+      "rule": "6.2: header section above 8192 octets closes the connection",
+      "expect_error": "close"
+    }
+  ]
+}

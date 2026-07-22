@@ -1,0 +1,3 @@
+Content-Length: 137
+
+{"jsonrpc":"2.0","method":"state.changed","params":{"id":"title","revision_seen":42,"surface":"app:main","value":"café ☕ — naïve"}}

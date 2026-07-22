@@ -1,0 +1,3 @@
+Content-Length: 234
+
+{"id":"h1","jsonrpc":"2.0","method":"session.hello","params":{"client":{"name":"kat-client","version":"1.0.0"},"client_nonce":"202122232425262728292a2b2c2d2e2f","pairing_id":"101112131415161718191a1b1c1d1e1f","protocol":2,"wants":[]}}

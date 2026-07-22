@@ -21,32 +21,32 @@ implementations follow.
 
 | File | What it is |
 |---|---|
-| [`SPEC.md`](SPEC.md) | The v1 protocol — envelope, handshake, surfaces, the semantic-action boundary, offline queue, dialogs/reminders, editor sync, the widget vocabulary, device capabilities, triggers, and conformance (§12). Anything not marked **(optional)** is required. |
-| [`SPEC-2.md`](SPEC-2.md) | The v2 line (draft): the same constitution on a JSON-RPC 2.0 envelope with Content-Length framing, typed error codes, the frame cap, and the overload rules. §6 incorporates everything below the envelope from SPEC.md by reference. **`contract.json` and `frames.golden` now track this line.** |
-| [`contract.json`](contract.json) | The machine-readable vocabulary a renderer or authoring tool validates emissions against — node types, the per-node key schema, the JSON-RPC method table with result schemas and error codes, the discriminated action schema, offline policies, the toolbar and binding vocabularies. |
-| [`goldens/`](goldens/) | The conformance corpus. One JSON line per wire shape: `widgets.golden` (every node the client can emit), `frames.golden` (trigger/capability frames), `hypertext.golden` (document node arrays). Feed each line to your renderer's test suite and you are held to the same truth the reference companion is. |
-| [`BUILDING-COMPANION.md`](BUILDING-COMPANION.md) | The build order — the rungs of §12 conformance unrolled, what to test at each, and where the reference Kotlin does the same job. |
-| [`validate.py`](validate.py) | Stdlib-only self-check: every golden line validates against `contract.json`. Run by this repo's CI, and a runnable reference for the checks your own renderer's test suite should perform. |
+| [`SPEC.md`](SPEC.md) | **The governing spec** (protocol 2, document 2.0.0-draft) — the normalized rewrite: JSON data model, Content-Length framing, JSON-RPC conventions, pairing with a normative HMAC known-answer vector, session lifecycle, surfaces and input-state reconciliation, the semantic-action boundary, durable queue, the widget vocabulary, presentation/editor/capability/trigger modules, and conformance (§24) with the required adversarial tests (§24.6). |
+| [`SPEC-2.md`](SPEC-2.md) | Historical: the previous v2 draft (the envelope-swap fold). Superseded by `SPEC.md` (amendment #32); kept for amendment-log provenance. |
+| [`contract.json`](contract.json) | The machine-readable projection (format 6) a renderer or authoring tool validates emissions against — node registry and per-node key schema with universal attributes, field types and enums, the full method table (sender, class, legal states, capability gate, params, result, errors), the error-code registry, limits, the discriminated action schema, and the capability/trigger/state registries. |
+| [`goldens/`](goldens/) | The conformance corpus. JSON-line files: `widgets.golden` (every node type plus bare actions), `frames.golden` (one message per registry method, both directions), `hypertext.golden` (document node arrays). `goldens/wire/` holds byte-exact framed fixtures per §24.5 — positive vectors (the §9.3 known-answer handshake, a UTF-8 byte-count body, back-to-back frames) and negative vectors (§24.6 items 1–3) — described by `goldens/wire/manifest.json`. |
+| [`BUILDING-COMPANION.md`](BUILDING-COMPANION.md) | The build order — conformance unrolled rung by rung, what to test at each, and where the reference Kotlin does the same job. |
+| [`validate.py`](validate.py) | Stdlib-only self-check and reference conformance harness: goldens against `contract.json`, `contract.json` against SPEC §8/§11, wire fixtures through a reference decoder at varied chunk sizes (including one octet at a time), and the §9.3 HMAC known-answer vector. Run by this repo's CI. |
 | [`SPEC-CHANGES.md`](SPEC-CHANGES.md) | The amendment log. Every normative change lands with one entry here (date, section, change, fixtures regenerated, reviewer). No entry, no amendment. |
 | [`slop-docs/`](slop-docs/) | The slop line's drafting kits and precedent surveys (JSON-RPC conversion, WebSocket transport, the LiveView harvest) — the provenance documents SPEC-2's status block and §16 cite. Informative only — not part of the contract surface. |
 
 ## Versioning
 
 Three numbers, all declared in `contract.json` and the governing spec's
-header (SPEC-2.md for the current line):
+header (SPEC.md):
 
 - **`protocol_version`** (offered in `session.hello`) — the wire version.
-  Bumped only on a *breaking* change to the frozen surface (envelope,
-  handshake, surfaces, action boundary, offline queue). Currently `2`:
-  the JSON-RPC envelope swap (SPEC-2, amendment #27); `1` is the SPEC.md
-  NDJSON line, pinned by its last format-3 tag.
+  Bumped only on a *breaking* change per SPEC §25. Currently `2`:
+  the JSON-RPC envelope line (amendment #27); `1` is the retired NDJSON
+  line, pinned by its last format-3 tag.
 - **`spec_version`** — the governing spec's revision (currently
-  `2.0-draft`). Grows with additive, negotiated features (§7–§11) and the
-  node vocabulary (§9), which do **not** bump `protocol_version`: a new
-  node type is negotiated per-connection via `node_types` (§3), not
+  `2.0.0-draft`). Grows with additive, negotiated features and the node
+  vocabulary, which do **not** bump `protocol_version`: a new node type is
+  negotiated per-connection via `surface_profiles` (SPEC §10.2), not
   versioned.
 - **`contract_format`** — the shape of `contract.json` itself (currently
-  `5`: the `methods` table + `error_codes`).
+  `6`: typed method table with states/gates, universal node attributes,
+  field types and enums, and the module registries).
 
 Releases are tagged off the protocol/spec numbers (e.g. `spec-1.0-rc`). The
 elisp reference implementation's own API version is a *separate* number that
