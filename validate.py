@@ -244,8 +244,8 @@ def check_frame(msg, path: str):
     if is_request != ("id" in msg):
         problem(f"{path}: `{method}` id presence contradicts its "
                 f"`{entry['class']}` class")
-    if is_request and not isinstance(msg.get("id"), str):
-        problem(f"{path}: request id must be a string (SPEC 7.2)")
+    if is_request and not isinstance(msg.get("id"), (str, int)):
+        problem(f"{path}: request id must be a string or integer (SPEC 7.2)")
     check_params(method, msg.get("params", {}), path)
 
 

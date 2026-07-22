@@ -410,6 +410,15 @@ prohibited, including JSON-RPC batches. After reading a complete body:
   response with `id: null`; and
 - the receiver MAY continue the connection after either error.
 
+The receiver obligations of this section, together with Section 4.1's
+duplicate-member and encoding rejections, are REQUIRED for the Companion: it
+accepts connections and faces Section 24.6's adversarial vectors. For the
+Emacs endpoint they are RECOMMENDED: Emacs dials only its authenticated
+Companion and MAY delegate framing and message decoding to a host-platform
+JSON-RPC library — such as core Emacs `jsonrpc.el` — accepting that
+library's tolerances. No sender obligation in Section 6.1 is relaxed by this
+paragraph.
+
 ## 7. JSON-RPC 2.0 conventions
 
 ### 7.1 Message classes
@@ -432,10 +441,14 @@ notification class is fixed by the method registry in Section 11.
 
 ### 7.2 Request IDs
 
-A sender MUST use an identifier under Section 4.4 of at most 64 ASCII octets as
-a request ID. It MUST NOT use `null`, a number, or an empty string. A request
-ID MUST be unique among that sender's outstanding requests on the connection.
-It MAY be reused after its request has concluded.
+A request ID MUST be either a JSON string or a JSON integer. A string ID MUST
+be an identifier under Section 4.4 of at most 64 ASCII octets and MUST NOT be
+empty. An integer ID MUST be a safe integer under Section 4.2. `null` and
+fractional numbers MUST NOT be used. A request ID MUST be unique among that
+sender's outstanding requests on the connection and MAY be reused after its
+request has concluded. A host JSON-RPC library that allocates sequential
+integer IDs per connection — such as core Emacs `jsonrpc.el` — therefore
+conforms without adaptation.
 
 Request IDs are connection-scoped and are not durable delivery identifiers.
 Every outstanding request fails locally when the connection closes. A durable
@@ -3240,7 +3253,8 @@ to this document.
 
 A conforming EBP 2 Emacs endpoint MUST implement:
 
-- the corresponding JSON-RPC, framing, authentication, and session rules;
+- the corresponding JSON-RPC, framing, authentication, and session rules,
+  with Section 6.2's receiver strictness scoped as that section states;
 - `session.hello`, proof and welcome verification, synchronization ordering,
   queue replay, and `session.ready`;
 - persistent monotonic per-surface revisions and absorption of Companion

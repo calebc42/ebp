@@ -33,3 +33,4 @@
 32 {"jsonrpc":"2.0","method":"edit.caret","params":{"cursor":4,"document":"doc:notes/123","editor_id":"body","seq":1,"session":"00112233445566778899aabbccddeeff"}}
 33 {"jsonrpc":"2.0","method":"edit.close","params":{"document":"doc:notes/123","editor_id":"body","session":"00112233445566778899aabbccddeeff"}}
 34 {"id":"cp1","jsonrpc":"2.0","method":"edit.complete","params":{"cursor":3,"document":"doc:notes/123","editor_id":"body","seq":1,"session":"00112233445566778899aabbccddeeff"}}
+35 {"id":7,"jsonrpc":"2.0","method":"queue.replay","params":{}}
