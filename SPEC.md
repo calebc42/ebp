@@ -338,7 +338,10 @@ pairing MUST first revoke the old pairing under Section 9.1. When a new session
 authenticates successfully, the Companion MUST terminate the older session
 before the new session enters `SYNCING`. A future multi-authority profile MUST
 define active-identity selection, visible-surface and theme ownership, trigger
-execution, and platform-artifact namespacing; this profile does not.
+execution, and platform-artifact namespacing; this profile does not. Within this
+single-authority profile, trigger firing and reminder presentation are
+device-lifetime obligations, not session-scoped: they proceed with no session
+and are uninterrupted by session supersession (Sections 21.1, 18.6).
 
 This profile authenticates endpoints but does not encrypt messages. An
 implementation requiring confidentiality against privileged local software
@@ -2355,6 +2358,14 @@ remain unchanged. The returned `count` MUST be a non-negative integer equal to
 the accepted number of reminders for this owner after replacement, not the
 global total.
 
+A reminder owner set is scoped to the pairing identity: `owner` names an app
+within one pairing, and one pairing's sets, fired receipts, and platform alarms
+MUST NOT be visible to or replaceable by another pairing. The durable reminder
+store MUST be partitioned by pairing identity, so that revocation under
+Section 9.1 erases exactly that identity's reminders and receipts. Reminder
+presentation is a device-lifetime obligation on the same terms as trigger firing
+(Section 21.1): it proceeds with no session and survives session supersession.
+
 Note (non-normative): on a platform that clears scheduled alarms across a
 reboot, persisting the accepted set is not sufficient by itself — the Companion
 must also re-arm the platform alarms for unfired reminders from the persisted
@@ -2864,6 +2875,16 @@ MUST leave the prior set armed unchanged. An empty set clears all registrations.
 Accepted registrations MUST persist across Companion and device restarts.
 Removed IDs MUST NOT fire. The Companion MUST NOT silently truncate the set.
 
+Firing, durable admission, `on_fire` execution, and reminder presentation
+(Section 18.6) are obligations of the Companion as a device-lifetime entity and
+MUST proceed while no session exists (Section 21.2). They are authorized by the
+persisted registration itself, not by an active session's capability
+negotiation: a granted `triggers.set` remains in force until it is replaced by
+an empty set, the pairing is revoked (Section 9.1), or a required OS permission
+is withdrawn. A later session that does not re-grant `triggers` MUST NOT by
+itself disarm previously accepted registrations, and session supersession
+(Section 5.2) MUST NOT interrupt firing.
+
 Before comparing registrations, the Companion MUST apply every documented
 default. An ID whose resulting complete entry is equal under Section 4.3 is
 unchanged. For an unchanged ID, accepting the set MUST be observationally
@@ -3032,6 +3053,15 @@ Omitting one of those filter fields matches every otherwise eligible value; it
 MUST NOT select an undocumented platform default. `state.edge.edge` has the
 separate default in Section 21.6.
 
+Every member shown in a type's Fire-data column is REQUIRED in that occurrence's
+`args.data` — the frozen fire data of Section 21.2 — unless the member is marked
+optional with `?`; a Companion that admits an occurrence for a type MUST
+populate its required fire-data members. For `time`, `precision` MUST be present
+and MUST be `inexact` unless the occurrence was delivered on an exact-alarm
+facility within an implementation-advertised bound of its scheduled instant, in
+which case `exact` asserts that bound; absent such a facility the Companion MUST
+send `inexact` and MUST NOT bound the delivery skew.
+
 For `power`, `battery.level`, `screen`, `headset`, `airplane`, `state.edge`,
 `network`, `wifi.enabled`, `bluetooth.enabled`, `calendar.event`, and
 `call.state`, the Companion MUST establish the current state or level silently
@@ -3054,7 +3084,11 @@ predicate, `state: "on"` holds for either `on` or `unlocked`, while
 
 For a newly added or changed one-shot entry, `time.at_ms` MUST be later than the
 wall clock at set acceptance. An unchanged entry remains valid after that time,
-including when already completed. On admission of its first eligible
+including when already completed. `time.at_ms` names an absolute wall-clock
+instant; a pending one-shot fires when the effective wall clock (Section 15.2)
+first reaches or passes it. A forward clock change past `at_ms` MUST fire it
+promptly, and a backward clock change MUST NOT retract a completed one-shot nor
+advance an unfired one earlier than `at_ms` on the effective clock. On admission of its first eligible
 occurrence, the Companion MUST commit a completed marker in Section 21.2's
 transaction even for `drop`; it MUST NOT create another occurrence while that
 unchanged entry remains registered. Completed entries remain in the set and in
@@ -3064,9 +3098,18 @@ introduced or last changed the entry, and preserves its acceptance anchor and
 last-fire floor across restart and across replace-sets in which the entry is
 unchanged (Section 21.1). Missed intervals MUST be coalesced into at most
 one occurrence; a restart or set replacement MUST NOT produce a catch-up burst.
+When one or more interval boundaries elapsed while the Companion could not fire,
+the single coalesced occurrence MUST be admitted once, promptly, at restore or
+re-arm time — neither deferred to the next boundary nor skipped — and the
+schedule MUST then resume on the original `anchor + k·interval` grid; the
+coalesced occurrence MUST NOT re-phase the cadence to its own delivery instant.
 
 For `boot`, the Companion MUST obtain a stable platform boot generation or
-maintain an equivalent durable boot marker. Installing a new or changed
+maintain an equivalent durable boot marker. If it can obtain neither, it MUST
+NOT advertise `boot` in `device.trigger_types`; it MUST NOT substitute the
+delivery of a single boot signal for a durable generation gate, and the
+at-most-once-per-boot guarantee MUST hold even if that boot signal is
+redelivered. Installing a new or changed
 registration MUST record the current generation silently and arm it for the
 next device boot; an unchanged registration keeps its recorded generation and
 receipt under Section 21.1. After a boot, the restored registration MUST admit at most
@@ -3075,9 +3118,14 @@ Section 21.2's transaction. Companion process restarts during the same device
 boot MUST NOT create additional occurrences.
 
 For privacy-sensitive `sms.received` and `call.state`, `policy: "drop"` is
-RECOMMENDED. If queued, payloads MUST remain in app-private encrypted storage
-where the platform provides a keystore-backed facility and MUST be deleted
-immediately after permanent disposition or expiry.
+RECOMMENDED. A queued `sms.received` or `call.state` record's fire data and any
+captured sensitive fields MUST be encrypted at rest under a platform
+keystore-backed key before the Section 21.2 transaction commits, and be
+decryptable only for delivery or deletion; where the platform provides a
+keystore-backed facility this is unconditional, and a Companion that cannot meet
+it MUST NOT advertise the source in `device.trigger_types`. Non-sensitive
+records in the same durable queue MAY remain plaintext. A queued sensitive
+payload MUST be deleted immediately after permanent disposition or expiry.
 
 ### 21.6 `state.edge`
 
