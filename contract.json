@@ -892,6 +892,7 @@
       "max_editor_sessions": {"requirement": "when editor.sync granted"},
       "max_dialogs": {"requirement": "when surfaces.dialog granted"},
       "max_pie_menus": {"requirement": "when presentation.pie-menu granted", "min": 1},
+      "max_device_report_bytes": {"requirement": "when capabilities or triggers granted"},
       "max_image_bytes": {"requirement": "when image advertised"},
       "max_decoded_image_bytes": {"requirement": "when image advertised"},
       "max_image_pixels": {"requirement": "when image advertised"},

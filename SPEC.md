@@ -237,6 +237,7 @@ representation, so optional escaping or whitespace cannot defeat the budget.
 | `max_editor_sessions` | REQUIRED when `editor.sync` is granted |
 | `max_dialogs` | REQUIRED when `surfaces.dialog` is granted |
 | `max_pie_menus` | REQUIRED when `presentation.pie-menu` is granted; at least `1` |
+| `max_device_report_bytes` | REQUIRED when `capabilities` or `triggers` is granted; maximum canonical bytes of the complete device report |
 | `max_image_bytes`, `max_decoded_image_bytes`, `max_image_pixels`, `max_canvas_ops`, `max_chart_points` | REQUIRED when the corresponding node type or feature is advertised |
 | `max_rich_spans`, `max_table_cells` | REQUIRED when `rich_text` or `table`, respectively, is advertised |
 | `max_shortcut_icon_bytes` | REQUIRED when `shortcut.pin` or `shortcuts.set` is advertised; decoded PNG octets |
@@ -278,8 +279,8 @@ B + limits.max_input_state_bytes - 2 <= limits.max_frame_bytes
 
 The subtraction replaces the two encoded bytes of `{}` already counted in
 `B`. `max_surfaces` MUST NOT exceed `max_surface_ids`. This reservation covers
-surface histories, profiles, limits, and the complete device report before any
-surface is admitted. The Companion MUST advertise a bounded supported subset of
+surface histories, profiles, limits, and the complete device report, counted at
+`max_device_report_bytes`, before any surface is admitted. The Companion MUST advertise a bounded supported subset of
 optional registry and device entries when necessary; it MUST NOT produce a
 welcome that depends on truncation. Queue admission up to
 `max_queued_events`, any supported negotiation result, and any permission-state
@@ -2169,7 +2170,9 @@ unrecognized `line` value MUST be a no-op, never an error.
 ```
 
 `dialog_id` and `spec` are REQUIRED. `style` is OPTIONAL and is `dialog`
-(default), `sheet`, or `sheet_full`. Every node, builtin, and feature in `spec`
+(default), `sheet`, or `sheet_full`. An unrecognized `style` value MUST fall
+back to `dialog` (Section 12 rule 6); a Companion MUST NOT reject a dialog for
+an unknown `style` alone. Every node, builtin, and feature in `spec`
 MUST be advertised by the `dialog` surface profile, and stateful IDs MUST be
 unique within the dialog. A second outstanding request with the same
 `dialog_id` MUST receive `1201 content-invalid`; the Companion MUST NOT replace
@@ -2351,6 +2354,11 @@ set. If the replacement plus reminders retained for other owners would exceed
 remain unchanged. The returned `count` MUST be a non-negative integer equal to
 the accepted number of reminders for this owner after replacement, not the
 global total.
+
+Note (non-normative): on a platform that clears scheduled alarms across a
+reboot, persisting the accepted set is not sufficient by itself — the Companion
+must also re-arm the platform alarms for unfired reminders from the persisted
+set after a device restart, or the surviving registrations will never fire.
 
 At or after `at_ms`, the Companion MUST present the reminder at most once for
 that accepted `(owner, id, at_ms)` tuple and MUST persist fired state before or
@@ -2669,6 +2677,11 @@ positive-knowledge list; omission MUST NOT mean unrestricted access.
 when `triggers` is granted and otherwise MAY be empty. `state_types` is REQUIRED
 when either `triggers` is granted or `state.get` appears in `caps`.
 
+The complete device report's canonical size under Section 4.5 MUST NOT exceed
+`limits.max_device_report_bytes`. A Companion whose full catalog would exceed
+that bound MUST advertise a bounded subset that fits; it MUST NOT emit a device
+report that depends on truncation.
+
 The Companion MUST re-check authorization at invocation or trigger-arm time. A
 stale permission snapshot may produce a typed refusal but MUST NOT permit an
 unauthorized operation.
@@ -2973,7 +2986,10 @@ NOT be interpolated.
 Substituting data from `sms.received`, `call.state`, or `calendar.event` into a
 notification, TTS, intent, sharing target, or other user-visible or external
 sink requires explicit user approval of that source-to-sink combination at
-install time. Without approval, the Companion MUST reject the trigger set.
+install time. Without approval, the Companion MUST reject the trigger set. This approval is
+per (sensitive source type, sink kind) combination and defaults to deny:
+approving one combination MUST NOT approve another, and a single blanket
+allowance covering all sources or all sinks is non-conformant.
 Sensitive substituted data MUST NOT appear on a lock screen unless the user
 separately allowed that exposure.
 
