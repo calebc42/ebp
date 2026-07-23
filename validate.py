@@ -141,6 +141,9 @@ def check_action(obj: dict, path: str):
         return
     if has_action:
         entry = ACTION_SCHEMA["remote"]
+        # SPEC 14.1: an action name contains at least one dot.
+        if not isinstance(obj["action"], str) or "." not in obj["action"]:
+            problem(f"{path}: action name must contain a dot")
         policy = obj.get("when_offline", ACTIONS["offline_default"])
         if policy not in OFFLINE_POLICIES:
             problem(f"{path}: unknown offline policy `{policy}`")
