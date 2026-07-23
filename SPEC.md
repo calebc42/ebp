@@ -1704,6 +1704,14 @@ semantics. This fallback is defensive behavior for a nonconforming or
 version-skewed sender; it is not feature negotiation and does not relax the
 sender gate above.
 
+A node type the Companion implements but that is absent from the applicable
+target's advertised `node_types` MUST be treated EXACTLY as an unknown type:
+its subtree is scanned for nested valid nodes, but its per-type schema is not
+applied, it registers no stateful draft, and it dispatches nothing. The strict
+per-member validation of Section 16.1 applies only to advertised and Core Node
+Set types. A validator keyed on the full contract vocabulary MUST therefore
+gate its per-type rules on the advertised `node_types` set.
+
 ### 16.3 Unknown fields
 
 A Companion MUST ignore an unknown optional node field. Emacs MUST obey the
@@ -1821,10 +1829,18 @@ absent. `badge.children`, when present, is a Node array.
 
 For an `image`, no URI form is implicit. A Companion advertising `image` in a
 target profile MUST advertise at least one of `image.https` or `image.data` in
-that same profile's `features`. Emacs MUST use only an advertised form. The
+that same profile's `features`. Emacs MUST use only an advertised form, and an
+image whose URI form is not advertised in the applicable target's `features` is
+content-invalid: the Companion MUST reject the containing surface with `1201`,
+parallel to the unadvertised-node-type rule in Section 16.2 (a validator keyed
+on the full vocabulary gates the form check on the advertised feature set). The
 `image.data` feature permits base64 `data:image/*` URLs; the Companion MUST
 validate the media type and decoded bytes, enforce the three advertised image
-limits, and reject active or unsupported formats.
+limits, and reject active or unsupported formats. An "active" format is any
+capable of scripting, external-reference resolution, or code execution — notably
+`image/svg+xml` — and MUST be rejected before decode. A Companion advertising
+`image.data` MUST decode at least `image/png` and `image/jpeg`; `image/gif`,
+`image/webp`, `image/bmp`, and `image/heic`/`image/heif` are OPTIONAL.
 
 For `image.https`, the Companion MUST use HTTPS, MUST NOT attach ambient
 cookies, credentials, client certificates, or authorization headers, and MUST
@@ -2039,10 +2055,16 @@ pixel.
 `chart.kind` is `line` (default), `bar`, `area`, or `sparkline`. A ChartSeries
 MUST contain `points: ChartPoint[]`, MAY contain `name: string` and
 `color: Color`, and each ChartPoint MUST contain finite numeric `x` and `y` and
-MAY contain `meta: object` whose descendants are JSON data only.
+MAY contain `meta: object` whose descendants are JSON data only. The x-axis is
+ORDINAL: points render evenly spaced by their array index within a series, and
+`x` is presentation and accessibility data and the tap payload, not a scaled
+coordinate. A value-scaled axis is out of scope for `chart`; an app needing one
+uses `canvas`.
 If `on_point_tap` is present, the Companion MUST return the complete authored
-point object in `args.value`. `summary` SHOULD provide an accessible textual
-equivalent.
+point object in `args.value`; it snaps the tap to the nearest authored point by
+ordinal index of the first series (the index clamped to that series' length),
+and there is no between-points null result. `summary` SHOULD provide an
+accessible textual equivalent.
 
 A canvas operation MUST have `op` and one of these closed shapes:
 
@@ -2129,11 +2151,15 @@ The finite snippet placeholders are:
 Substitution MUST be single-pass. An unknown `${...}` token MUST remain literal.
 `$${` MUST produce a literal `${` without beginning a placeholder. Substituted
 text MUST NOT be scanned again. A Companion MUST NOT interpolate an operation
-or command name.
+or command name. A snippet MUST contain at most one `${input:...}` token; a
+snippet with more than one is an invalid toolbar item.
 
 Each local edit operation SHOULD be one undo step. `line-start` MUST no-op when
-the line already starts with the exact literal inserted prefix. `block` MUST
-place the snippet on its own line or lines. A `command` operation is valid only
+the line already starts with the exact literal inserted prefix — a byte-for-byte
+comparison of the prefix against the start of the caret's line, with no
+whitespace trimming, so a prefix carrying leading whitespace is matched
+literally and an indented line whose non-space content matches is NOT treated as
+already-present. `block` MUST place the snippet on its own line or lines. A `command` operation is valid only
 for a synchronized editor in `READY`. It MUST create a non-durable
 `event.action` with action `edit.command`, the containing surface or dialog
 context, and args containing `command`, `document`, `editor_id`, `session`,
@@ -2269,7 +2295,11 @@ session replacement, or process shutdown. Every pie-menu descriptor MUST use
 
 Every field is optional. The Companion MUST merge missing roles with a legible
 platform fallback, MUST persist the latest accepted theme, and MUST treat each
-notification as a complete replacement of the previously pushed values.
+notification as a complete replacement of the previously pushed values. When a
+role is present but its paired on-color is absent (for example `primary` is
+pushed without `on_primary`), the Companion MUST derive a contrast-legible
+on-color from the pushed color rather than adopt its base scheme's on-color,
+which need not be legible against the foreign pushed color.
 
 When `dark` is present it forces that polarity; when `dark` is omitted the
 Companion follows the device's system light/dark setting. Emacs thus selects
@@ -2283,7 +2313,17 @@ the resulting `theme.set`.
 A `SyntaxStyle` MAY contain `fg: Color`, `bg: Color`, `font_weight`, `italic`,
 and `underline`, with the types from Section 17.1. Empty or missing color and
 syntax maps select the Companion's native platform defaults. EBP does not name
-or require a particular UI toolkit's theme system.
+or require a particular UI toolkit's theme system. A SyntaxStyle's PRESENT
+members override the Companion's own intrinsic per-role styling, each
+independently, and ABSENT members fall back to the Companion default; a
+Companion MAY honor only `fg` and treat `bg`, `font_weight`, `italic`, and
+`underline` as advisory where its highlighter cannot express them per role.
+
+The standard syntax roles are `comment`, `string`, `keyword`, `function`,
+`constant`, `variable`, `type`, `number`, `operator`, `preprocessor`,
+`heading`, `link`, `todo`, `done`, and `tag`; unknown syntax roles MUST be
+ignored. These are projected into `contract.json` as `syntax_roles`, parallel
+to `theme_roles`.
 
 Standard roles include `primary`, `on_primary`, `primary_container`,
 `on_primary_container`, parallel `secondary`, `tertiary`, and `error` roles,
@@ -2296,9 +2336,16 @@ Unknown roles MUST be ignored.
 A `notification:*` surface metadata object MAY contain `channel: identifier`,
 `ongoing: boolean`, `category: identifier`, `priority`, `chronometer`, and
 `actions`. `ongoing` defaults to `false`. `priority` is `min`, `low`, `default`,
-`high`, or `max`, default `default`. `chronometer` is
-`{base_ms, count_down?}`; `base_ms` is an epoch timestamp and `count_down`
-defaults to `false`.
+`high`, or `max`, default `default`. `priority` is a best-effort hint: the
+Companion MUST present it monotonically (never below the requested level
+relative to `default`) and MAY coalesce adjacent levels — notably `high` and
+`max` — where the platform lacks a distinct level; authors MUST NOT rely on a
+five-way distinction. `chronometer` is `{base_ms, count_down?}`; `base_ms` is an
+epoch-millis integer timestamp and `count_down` defaults to `false`.
+`count_down: false` counts elapsed time forward from `base_ms` (which SHOULD be
+in the past); `count_down: true` counts remaining time down to `base_ms` (which
+SHOULD be in the future). When `base_ms` is on the wrong side of the current
+time the Companion presents zero-or-elapsed rather than a negative timer.
 
 `actions` is an ordered array. Each entry MUST contain `label` and `on_tap`, and
 MAY contain `icon`, `dismiss`, and `input`. The platform MAY display fewer

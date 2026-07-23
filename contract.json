@@ -1021,6 +1021,27 @@
     "success",
     "warning"
   ],
+  "syntax_roles": [
+    "comment",
+    "string",
+    "keyword",
+    "function",
+    "constant",
+    "variable",
+    "type",
+    "number",
+    "operator",
+    "preprocessor",
+    "heading",
+    "link",
+    "todo",
+    "done",
+    "tag"
+  ],
+  "image_media_types": {
+    "mandatory": ["image/png", "image/jpeg"],
+    "optional": ["image/gif", "image/webp", "image/bmp", "image/heic", "image/heif"]
+  },
   "notification_meta": {
     "fields": ["channel", "ongoing", "category", "priority", "chronometer", "actions"],
     "action_fields": {
