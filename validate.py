@@ -48,6 +48,7 @@ OFFLINE_POLICIES = set(ACTIONS["offline_policies"])
 
 MAX_HEADER = contract["limits"]["fixed"]["max_header_bytes"]
 MAX_BODY = contract["limits"]["fixed"]["max_body_bytes"]
+MAX_DEPTH = contract["limits"]["fixed"]["max_json_depth"]
 
 problems: list[str] = []
 
@@ -271,6 +272,36 @@ def reject_duplicates(pairs):
     return dict(pairs)
 
 
+def exceeds_depth(text):
+    """SPEC 4.5: True when TEXT nests JSON containers past MAX_DEPTH.
+
+    A single linear scan (string literals and their escapes skipped) so the
+    check runs in bounded stack — before the recursive json.loads a body
+    nested past the limit would otherwise drive to a stack overflow.
+    """
+    depth = 0
+    in_string = False
+    escaped = False
+    for c in text:
+        if in_string:
+            if escaped:
+                escaped = False
+            elif c == "\\":
+                escaped = True
+            elif c == '"':
+                in_string = False
+            continue
+        if c == '"':
+            in_string = True
+        elif c in "{[":
+            depth += 1
+            if depth > MAX_DEPTH:
+                return True
+        elif c in "}]":
+            depth -= 1
+    return False
+
+
 def decode_stream(chunks):
     """Reference SPEC §6 decoder over an iterable of byte chunks.
 
@@ -329,6 +360,9 @@ def decode_stream(chunks):
         try:
             text = body.decode("utf-8")
         except UnicodeDecodeError:
+            raise FrameError("parse-error")
+        # SPEC 4.5: refuse an over-deep body before the recursive parser runs.
+        if exceeds_depth(text):
             raise FrameError("parse-error")
         try:
             msg = json.loads(text, object_pairs_hook=reject_duplicates)

@@ -199,6 +199,18 @@ limits. Module-specific storage and content limits MUST be reported in the
 authenticated welcome's `limits` object. A sender MUST respect reported limits
 and MUST NOT rely on receiver truncation.
 
+A body that nests JSON containers past the 64-container limit above MUST be
+rejected as a JSON-RPC Parse Error under Section 6.2 — `error.code` `-32700`
+with `id: null` when a response can still be sent safely — and the receiver MAY
+continue the connection. Because such a body can exhaust a recursive JSON
+parser's stack before any structural error is reported, the rejection MUST be
+made before the body is otherwise parsed, in bounded stack: for example, by a
+single linear scan of the decoded body that increments on each `{` or `[` and
+decrements on each `}` or `]` outside a JSON string literal. Per Section 6.2's
+receiver-strictness scoping, this bounded-stack determination is REQUIRED for
+the Companion and RECOMMENDED for the Emacs endpoint, which MAY delegate
+decoding to a host JSON-RPC library that bounds recursion by its own means.
+
 The `limits` object uses these members. All byte counts refer to UTF-8 or stored
 payload octets as applicable, not characters. For `max_field_bytes` and
 `max_input_state_bytes`, encoded size means the UTF-8 length of the logical
@@ -396,6 +408,33 @@ On an oversized declaration, the receiver SHOULD close immediately instead of
 reading and discarding the declared body. This prevents an attacker from
 holding the connection open with an unbounded discard.
 
+When such a close is triggered by a complete, well-formed header section — a
+single valid `Content-Length` declaring a body above the body cap, or a
+well-formed header section that exceeds the 8,192-octet header cap — the
+receiver knows the exact framing fault and its send direction is unaffected.
+Where the session permits `log.error` (the `SYNCING` or `READY` states of
+Section 11), the receiver SHOULD emit one diagnostic naming the fault
+immediately before it closes, using the shape and rate limit of Section 22.3:
+
+```json
+{"jsonrpc":"2.0","method":"log.error","params":{
+  "code":1400,
+  "message":"Frame exceeds size cap",
+  "data":{"kind":"frame-too-large"}}}
+```
+
+The `data` object MAY also carry `bytes` (the declared or observed octet count)
+and `max` (the exceeded cap). The receiver MUST still close immediately; this
+`log.error` MUST NOT delay the close, resume reading or discarding an oversized
+body, or otherwise weaken the close obligations above. The receiver MUST NOT
+emit the diagnostic when the fault leaves the stream desynchronized or its cause
+ambiguous — a missing or duplicate `Content-Length`, a malformed header line, an
+unterminated header section, or EOF within a frame — nor before authentication;
+in each of those cases it closes silently. Code `1400` is diagnostic-only: the
+oversized body is never parsed, so no request id exists to answer, and `1400`
+MUST appear only as a `log.error` param and MUST NOT be returned as a JSON-RPC
+`error` response.
+
 The receiver MUST read exactly the declared number of body octets. It MUST
 retain incomplete header and body data across ordinary transport reads. EOF in
 the middle of a frame terminates the session; the receiver MUST NOT attempt to
@@ -502,6 +541,8 @@ already committed.
 An EBP-defined error MUST use a numeric JSON-RPC `error.code`, a concise
 human-readable `error.message`, and an `error.data` object containing the stable
 string member `kind`. Additional `data` members MAY supply a remedy or context.
+One code below is diagnostic-only: it is carried in a `log.error` param
+(Section 22.3) and is never returned as a response `error.code`.
 
 | Code | `data.kind` | Meaning |
 |---:|---|---|
@@ -520,6 +561,7 @@ string member `kind`. Additional `data` members MAY supply a remedy or context.
 | `1203` | `auth-failed` | Authentication proof failed |
 | `1204` | `session-state` | Method is not legal in the current session state |
 | `1301` | `request-cancelled` | Request was cancelled |
+| `1400` | `frame-too-large` | Frame exceeds the header or body size cap; diagnostic-only, see Section 6.2 |
 | `1401` | `overloaded` | Bounded processing capacity was exhausted |
 | `1500` | `event-retry` | Event could not be accepted yet and remains eligible for retry |
 | `1600` | `queue-busy` | A queue replay is already active |
@@ -532,8 +574,10 @@ implementation MUST NOT include secrets, password values, clipboard contents,
 SMS bodies, or other sensitive values in an error.
 
 Framing failures that force connection closure are transport errors and do not
-require a JSON-RPC response. An endpoint MUST NOT recursively answer a malformed
-`log.error` with another `log.error`.
+require a JSON-RPC response. A receiver MAY name a size-cap framing failure to
+its peer with the diagnostic-only code `1400 frame-too-large` on `log.error`
+before closing, as Section 6.2 specifies. An endpoint MUST NOT recursively
+answer a malformed `log.error` with another `log.error`.
 
 ## 9. Pairing and mutual authentication
 
@@ -794,8 +838,8 @@ capability-gated method or emit capability-gated content unless the capability
 was granted.
 
 `surface_profiles` maps presentation targets to positive-knowledge profiles.
-`app` is REQUIRED. `notification`, `widget`, and `dialog` are REQUIRED only when
-the corresponding surface capability was granted. Each profile MUST contain
+`app` is REQUIRED. `notification`, `widget`, `tile`, and `dialog` are REQUIRED
+only when the corresponding surface capability was granted. Each profile MUST contain
 distinct `node_types`, `builtins`, and `features` arrays and MUST list exactly
 what the Companion will honor on that target during this session. Emacs MUST
 gate every emitted node, builtin, and constraining feature against the target
@@ -803,7 +847,8 @@ profile and MUST NOT interpret a missing profile or list as support for
 everything.
 
 The applicable target is `app` for `app:*`, `notification` for
-`notification:*`, `widget` for `widget:*`, and `dialog` for `dialog.show`.
+`notification:*`, `widget` for `widget:*`, `tile` for `tile:*`, and `dialog` for
+`dialog.show`.
 
 The `app` profile MUST contain the Core Node Set, `view.switch`, and
 `companion.settings.open`. The `dialog` profile MUST contain `dialog.submit`
@@ -945,6 +990,7 @@ A surface ID selects a presentation target:
 | `app:<name>` | Full-screen in-application UI | core |
 | `notification:<name>` | System notification | `surfaces.notification` |
 | `widget:<name>` | Home-screen widget | `surfaces.widget` |
+| `tile:<name>` | Quick-Settings tile slot | `surfaces.tile` |
 
 `<name>` MUST be non-empty and use Section 4.4's allowed identifier characters.
 The complete prefixed Surface ID MUST satisfy Section 4.4's 128-octet limit, so
@@ -2060,6 +2106,7 @@ A ToolbarItem MUST contain `label` or `icon` and exactly one operation:
 | `on_tap` | ActionDescriptor |
 | `menu` | Array of non-menu ToolbarItems |
 | `command` | Identifier registered in the Emacs editor-command allowlist |
+| `line` | One of `promote`, `demote`, `move-up`, `move-down` |
 
 It MAY contain `placement` (`cursor`, `line-start`, or `block`) and
 `long_press`, which contains exactly one non-menu operation. A Companion MUST
@@ -2091,6 +2138,25 @@ context, and args containing `command`, `document`, `editor_id`, `session`,
 `command`; it MUST NOT pass either string directly to a host-language evaluator
 or ambient command dispatcher. Connection loss or a transient error abandons
 the command without replay.
+
+A `line` operation is a Companion-local structural edit of the line containing
+the cursor. Unlike `command`, it never contacts Emacs and is valid in every
+editor tier, including a local `editor` with no `document`; it MUST produce one
+local edit and SHOULD be a single undo step, exactly as a `snippet` does. In a
+synchronized editor the resulting change flows to Emacs through Section 19 like
+any other local edit; an app that needs a semantic Emacs operation rather than
+this literal text transform MUST use `command` instead. The four values act on
+the cursor's line as follows. `promote` reduces its outline depth by one step: a
+line beginning with two or more `*` heading markers loses one leading `*`;
+otherwise a line beginning with two or more leading spaces loses two of them; a
+line already at minimum depth is unchanged. `demote` raises it by one step: a
+line beginning with `*` gains one leading `*`; otherwise a line whose first
+non-space character opens a bullet (`-`) or ordered (`N.` or `N)`) list item
+gains two leading spaces; any other line is unchanged. `move-up` exchanges the
+cursor's line with the line above it, keeping the cursor at the same column of
+that line, and MUST be a no-op on the first line; `move-down` exchanges it with
+the line below under the same rule and MUST be a no-op on the last line. An
+unrecognized `line` value MUST be a no-op, never an error.
 
 ## 18. Optional presentation modules
 
@@ -2198,6 +2264,15 @@ session replacement, or process shutdown. Every pie-menu descriptor MUST use
 Every field is optional. The Companion MUST merge missing roles with a legible
 platform fallback, MUST persist the latest accepted theme, and MUST treat each
 notification as a complete replacement of the previously pushed values.
+
+When `dark` is present it forces that polarity; when `dark` is omitted the
+Companion follows the device's system light/dark setting. Emacs thus selects
+forced-light (`dark: false`), forced-dark (`dark: true`), or follow-system (omit
+`dark`). Combined with `colors` — a role map that mirrors the Emacs theme, or
+`null` to select the Companion's native scheme — this expresses the light, dark,
+follow-system, and mirror-Emacs choices without EBP naming a platform theme
+system. The choice among these modes is Emacs-side policy; the wire carries only
+the resulting `theme.set`.
 
 A `SyntaxStyle` MAY contain `fg: Color`, `bg: Color`, `font_weight`, `italic`,
 and `underline`, with the types from Section 17.1. Empty or missing color and
@@ -3073,6 +3148,7 @@ This document defines these session capability names:
 |---|---|
 | `surfaces.notification` | `notification:*` surfaces and Section 18.5 metadata |
 | `surfaces.widget` | `widget:*` surfaces |
+| `surfaces.tile` | `tile:*` surfaces (host Quick-Settings tile slots) |
 | `surfaces.dialog` | `dialog.show` |
 | `presentation.toast` | `toast.show` |
 | `presentation.pie-menu` | `pie_menu.show` and `pie_menu.dismiss` |
@@ -3330,8 +3406,8 @@ A core conformance suite MUST include at least:
    count;
 2. two frames with no delimiter between the first body and next header;
 3. partial headers, partial bodies, invalid lengths, duplicate lengths,
-   oversized declarations, invalid UTF-8, invalid JSON, duplicate members, and
-   prohibited batch arrays;
+   oversized declarations, invalid UTF-8, invalid JSON, over-deep JSON nesting,
+   duplicate members, and prohibited batch arrays;
 4. wrong-direction, wrong-class, unknown-request, and unknown-notification
    dispatch;
 5. pre-auth request and notification refusal;

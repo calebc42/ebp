@@ -845,6 +845,10 @@
       "kind": "request-cancelled",
       "meaning": "Request was cancelled"
     },
+    "1400": {
+      "kind": "frame-too-large",
+      "meaning": "Frame exceeds the header or body size cap; diagnostic-only, see Section 6.2"
+    },
     "1401": {
       "kind": "overloaded",
       "meaning": "Bounded processing capacity was exhausted"
@@ -902,6 +906,7 @@
   "capabilities": [
     "surfaces.notification",
     "surfaces.widget",
+    "surfaces.tile",
     "surfaces.dialog",
     "presentation.toast",
     "presentation.pie-menu",
@@ -983,7 +988,8 @@
     "optional": ["body", "on_tap"]
   },
   "toolbar": {
-    "ops": ["snippet", "on_tap", "menu", "command"],
+    "ops": ["snippet", "on_tap", "menu", "command", "line"],
+    "line_ops": ["promote", "demote", "move-up", "move-down"],
     "placements": ["cursor", "line-start", "block"],
     "snippet_placeholders": ["${selection}", "${cursor}", "${input:Prompt}", "${date}", "${time}"]
   },

@@ -220,6 +220,13 @@
       "kind": "negative",
       "rule": "6.2: header section above 8192 octets closes the connection",
       "expect_error": "close"
+    },
+    {
+      "file": "21-deep-nesting.bin",
+      "profile": "android-loopback-tcp",
+      "kind": "negative",
+      "rule": "4.5/6.2/24.6 item 3: a body nesting JSON containers past 64 is rejected as a JSON-RPC Parse Error before parsing",
+      "expect_error": "parse-error"
     }
   ]
 }
