@@ -273,7 +273,7 @@
     "selectable": "boolean",
     "selected": "boolean",
     "scroll": "boolean",
-    "fill": "boolean",
+    "fill": "varies-per-node",
     "collapsed": "boolean",
     "scrollable": "boolean",
     "pager_only": "boolean",
