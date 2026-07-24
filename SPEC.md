@@ -1740,6 +1740,7 @@ density-independent units (`dp`) unless stated otherwise.
 | Member | Type | Default | Meaning |
 |---|---|---|---|
 | `key` | identifier | — | Stable sibling-unique presentation identity; preferred over `id`, then tree path |
+| `id` | identifier | — | Document-unique node identity (§16.1); used where `key` is absent and to target stateful nodes |
 | `scroll_here` | boolean | `false` | Request first-show/index-change scroll anchoring |
 | `padding` | number | `0` | Uniform padding |
 | `pad` | Pad object | — | Per-side padding; overrides `padding` on supplied sides |
