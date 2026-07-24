@@ -1936,7 +1936,7 @@ node. `editor` uses `read_only` for editing permission in addition to
 | `t` | Required members | Optional members and semantics |
 |---|---|---|
 | `button` | `label: string`, `on_tap: ActionDescriptor` | `icon`, `variant`, `enabled`. `variant`: `filled` (default), `tonal`, `outlined`, or `text`. |
-| `icon_button` | `icon: string`, `on_tap: ActionDescriptor` | `content_description`, `badge`, `enabled` |
+| `icon_button` | `icon: identifier`, `on_tap: ActionDescriptor` | `content_description`, `badge`, `enabled` |
 | `chip` | `label: string` | `on_tap`, `selected`, `icon`, `enabled` |
 | `assist_chip` | `label: string` | `on_tap`, `icon`, `enabled` |
 | `menu` | `items: MenuItem[]` | `icon`, `enabled` |
