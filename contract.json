@@ -246,7 +246,7 @@
     "action_label": "string",
     "snackbar": "string",
     "url": "string",
-    "name": "identifier",
+    "name": "string",
     "icon": "identifier",
     "syntax": "identifier",
     "id": "identifier",
