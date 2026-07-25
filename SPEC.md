@@ -2653,7 +2653,13 @@ removal, surface tombstoning, document change, or presentation-identity change
 When a synchronized editor first becomes present in `READY`, the Companion MUST
 create a fresh session and send `edit.open` before sending any delta, caret,
 completion, annotation-related request, or editor command for it. If the node
-was accepted during `SYNCING`, opening waits until `READY`. The same presentation
+was accepted during `SYNCING`, opening waits until `READY`. Presence is
+evaluated against the accepted surface and dialog documents at the moment
+`READY` is reached, not against the mutations this connection happened to
+observe: a reconnection over cached snapshots (Section 13.5) receives no
+`surface.update`, and every synchronized editor still presented MUST get a
+session anyway, while one accepted during `SYNCING` whose surface was removed
+before `READY` MUST NOT. The same presentation
 identity and `document` preserve the session across surface replacements; its
 later authored `value` is not a second seed. Node removal, surface tombstoning,
 document change, or presentation-identity change MUST close the old session and
@@ -2895,6 +2901,16 @@ MUST NOT be applied: an inbound `edit.apply` that would exceed it MUST receive
 `1201 content-invalid` with `data.reason: "editor-too-large"` and MUST NOT change
 text, Emacs MUST NOT emit such a splice, and a Companion-local edit that would
 exceed the limit MUST be refused as if the editor were read-only.
+
+A synchronized editor session is identified by its `document` and its Section
+16.1 presentation identity, so at most one accepted document may present a given
+pair at a time. The Companion MUST reject a surface or dialog mutation that would
+present a `(document, presentation identity)` pair another accepted surface or
+outstanding dialog already presents, with `1201 content-invalid` and
+`data.reason: "editor-duplicate"`. Accepting the second claim would leave the
+first presentation's session unreachable without an `edit.close`, and Section
+19.4 forbids `edit.resync` from recreating it — so Emacs would hold a session
+identifier that can never again be applied to or recovered.
 
 The seed carries the same bound as a receiver duty. The Companion MUST reject a
 surface or dialog mutation presenting a synchronized `editor` whose authored
