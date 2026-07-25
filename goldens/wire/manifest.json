@@ -227,6 +227,13 @@
       "kind": "negative",
       "rule": "4.5/6.2/24.6 item 3: a body nesting JSON containers past 64 is rejected as a JSON-RPC Parse Error before parsing",
       "expect_error": "parse-error"
+    },
+    {
+      "file": "22-integer-out-of-range.bin",
+      "profile": "android-loopback-tcp",
+      "kind": "negative",
+      "expect_error": "parse-error",
+      "rule": "4.2/6.2/24.6 item 3: an integer outside the safe range cannot be carried by the EBP data model and is rejected during decoding"
     }
   ]
 }

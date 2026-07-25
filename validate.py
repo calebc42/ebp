@@ -275,6 +275,33 @@ def reject_duplicates(pairs):
     return dict(pairs)
 
 
+MAX_SAFE_INT = 9007199254740991
+
+
+def reject_bad_numbers(value):
+    """SPEC 4.2 (amendment #99): reject a number this data model cannot carry.
+
+    An integral literal outside the safe range, or a literal that overflowed
+    to an infinity, is a Parse Error on the same terms as the 4.5 depth
+    limit — decoding cannot represent it, so the failure precedes dispatch.
+    A literal that underflowed to zero decodes AS zero and is accepted.
+    """
+    if isinstance(value, bool):
+        return
+    if isinstance(value, int):
+        if value > MAX_SAFE_INT or value < -MAX_SAFE_INT:
+            raise FrameError("parse-error")
+    elif isinstance(value, float):
+        if value != value or value in (float("inf"), float("-inf")):
+            raise FrameError("parse-error")
+    elif isinstance(value, dict):
+        for v in value.values():
+            reject_bad_numbers(v)
+    elif isinstance(value, list):
+        for v in value:
+            reject_bad_numbers(v)
+
+
 def exceeds_depth(text):
     """SPEC 4.5: True when TEXT nests JSON containers past MAX_DEPTH.
 
@@ -375,6 +402,8 @@ def decode_stream(chunks):
             raise FrameError("parse-error")
         if not isinstance(msg, dict):
             raise FrameError("invalid-request")
+        # SPEC 4.2 (amendment #99): numbers this data model cannot carry.
+        reject_bad_numbers(msg)
         messages.append(msg)
 
 

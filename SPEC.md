@@ -148,6 +148,17 @@ underflows to zero. Receivers MUST NOT preserve implementation-specific extra
 decimal precision as a distinct EBP value. `NaN`, positive infinity, and
 negative infinity are not JSON values and MUST NOT be transmitted.
 
+A receiver MUST reject a body containing a number that violates this section:
+an integral literal outside the safe range above, or a literal that overflows to
+an infinity. Rejection is a JSON-RPC Parse Error, on the same terms as Section
+4.5's nesting-depth limit — the value cannot be carried by this data model, so
+the failure belongs to decoding and precedes dispatch, and the receiver MAY
+continue the connection as Section 6.2 permits. A receiver MUST NOT widen an
+out-of-range integer into an implementation-specific extended type. A literal
+whose nonzero exact value underflows to zero converts to zero: the sender
+violated this section, but zero is a representable EBP value, so no message is
+rejected for it.
+
 Epoch timestamps named `*_at_ms` or `*_ms` are non-negative integer
 milliseconds since `1970-01-01T00:00:00Z`. Durations named `*_s` are
 non-negative integer seconds unless stated otherwise.
@@ -2752,6 +2763,16 @@ respects platform composition atomicity. Coalescing widens the window in
 which a concurrent `edit.apply` receives a `stale` result; the Companion
 SHOULD bound its coalescing interval so that window stays short.
 
+A local edit MUST be derived from the current shadow. Where the Companion's
+editing surface holds its own copy of the document text, the Companion MUST NOT
+apply a local edit whose pre-edit state is not the shadow at the moment of
+application; it MUST discard that edit without changing text or advancing `seq`,
+and MUST re-present the current shadow in the editing surface. This is the local
+counterpart of Section 19.4's shadow-equality gate, and it does not follow from
+the length equation: a Companion derives `len` from its own shadow, so a splice
+expressed in a superseded document's coordinates satisfies the equation by
+construction and only its bounds are checked.
+
 `edit.caret` contains `document`, `editor_id`, `session`, `seq`, `cursor`, and
 optional paired `sel_start` and `sel_end`. It is accepted only when `session` and `seq` match. It is
 best-effort presentation context and MUST NOT change document text. The
@@ -2839,8 +2860,15 @@ The Companion MUST apply a text-changing form only when:
 
 It MUST return `{status:"applied", seq}` on success or
 `{status:"stale", seq:<current>}` without changing text when a gate fails. A
-text-changing apply SHOULD be one native undo step. A move-only form succeeds
-only at the current sequence.
+text-changing apply SHOULD be one native undo step.
+
+A move-only form carries `seq` — it is REQUIRED on every `edit.apply` — and
+succeeds only when that `seq` equals the Companion's current sequence. A
+move-only form whose `seq` does not equal the current sequence MUST receive
+`{status:"stale", seq:<current>}` and MUST NOT move the caret or selection: its
+positions were computed against a document state the Companion has already left,
+so applying it would report a caret the document no longer has. A move-only form
+never advances the sequence.
 
 A text-changing operation that would carry the document past `max_editor_bytes`
 MUST NOT be applied: an inbound `edit.apply` that would exceed it MUST receive
