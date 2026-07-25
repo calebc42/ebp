@@ -862,7 +862,8 @@
         "value"
       ],
       "on_point_tap": [
-        "value"
+        "value",
+        "index"
       ]
     }
   },
@@ -1958,5 +1959,10 @@
       "node_body": false,
       "multi_view": false
     }
+  },
+  "image_data_encoding": {
+    "alphabet": "rfc4648-standard",
+    "padding": "required",
+    "whitespace": "forbidden"
   }
 }

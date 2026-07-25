@@ -599,6 +599,30 @@ cannot serialize the response body MUST answer the request with
 > with a value its serializer maps to `{}`, and MUST NOT rely on its language's
 > empty-list or null value doing so.
 
+EBP defines no protocol-level request deadline. Where a method's section states
+that the responder keeps the request outstanding pending user interaction —
+`dialog.show` (Section 18.1) and `capability.invoke` (Section 20.2) — a
+requester MUST NOT apply a local deadline shorter than 60 seconds and SHOULD
+apply none. A requester that stops waiting for an outstanding request MUST send
+`rpc.cancel` for that ID before treating it as concluded, except where another
+section requires it to close the transport without appending a frame; it MUST
+ignore any response later received for that ID, and MUST NOT reuse the ID for
+the remaining life of the connection. For the purposes of Section 7.2, a
+request has concluded only when its response has been received, its
+`rpc.cancel` has been sent, or the connection has closed. A response arriving
+for an abandoned request MUST be discarded without effect and is not a protocol
+fault.
+
+> Informative: host JSON-RPC libraries commonly impose a fixed default
+> per-request deadline — as little as 10 seconds — and send nothing to the peer
+> on expiry, discarding the eventual answer. An endpoint must raise or disable
+> that for user-paced and unbounded-duration methods, and wire its expiry
+> handler to emit `rpc.cancel`. The failure this prevents is concrete: a
+> `dialog.show` carrying a password in `capture_fields` is answered after the
+> user types, by which time the requester has silently dropped the
+> continuation — the credential is transmitted, erased at the source under
+> Section 14.6, and discarded at the destination.
+
 A notification MUST NOT receive a JSON-RPC response. A method's request or
 notification class is fixed by the method registry in Section 11.
 
@@ -658,7 +682,8 @@ TCP byte ordering does not by itself satisfy these application-order rules.
 ### 7.5 Cancellation
 
 After authentication, either endpoint MAY send `rpc.cancel` for an outstanding
-request it originated.
+request it originated, and MUST send it when it abandons that request locally
+(Section 7.1).
 Its params MUST be `{id}` where `id` is the exact request ID being cancelled — a
 JSON string or a safe integer — matched against the outstanding request's `id` by
 Section 4.3 equality. A malformed cancellation notification MUST be logged and ignored.
@@ -824,7 +849,21 @@ The Companion MUST create a fresh server nonce and return:
 
 Emacs MUST then send `auth.response` with both nonces and its proof. Each nonce
 MUST encode 16 cryptographically random octets as 32 lowercase hexadecimal
-characters and MUST be used for only one transport connection.
+characters and MUST be used for only one transport connection. The generator
+MUST be one whose future outputs remain unpredictable to a party that has
+observed any number of its previous outputs; a generator seeded once from a
+value narrower than 128 bits, or a language's default pseudo-random facility
+not documented as cryptographic, does not satisfy this requirement. The same
+requirement applies to the pairing token and pairing ID of Section 9.1 and to
+every other value this specification requires to be cryptographically random.
+
+> Informative: some host environments expose a fast default pseudo-random
+> function seeded once from the operating system and unsuitable here, while
+> their cryptographic source is reachable only indirectly — through an optional
+> cryptography module, through a hash or cipher primitive that accepts an
+> auto-generated-IV input, or by reading the platform entropy device.
+> Implementers SHOULD confirm which the deployment build provides, and SHOULD
+> fail pairing rather than fall back.
 
 ### 9.3 Proof construction
 
@@ -872,7 +911,27 @@ grammar MUST receive `-32602` followed by connection close. A well-formed but
 reused, mismatched, or incorrect proof or nonce MUST receive `1203` followed by
 connection close.
 
-Both endpoints MUST compare well-formed proofs in constant time. The Companion
+Both endpoints MUST compare well-formed proofs without leaking, through control
+flow or data-dependent branching, how many leading characters matched. Because
+both proofs are fixed-length lowercase hexadecimal (Section 4.4), an endpoint
+MUST compare them by examining every character position of both values and
+combining the per-position differences into a single result tested once at the
+end, and MUST NOT use a comparison that returns as soon as a difference is
+found. The same rule applies to the comparison on the unknown-pairing-ID path
+above. This requirement is stated at the level of the endpoint's own program;
+it does not require an endpoint to eliminate timing variation introduced by its
+host language runtime, memory manager, or processor, though an endpoint SHOULD
+prefer a platform-provided constant-time comparison where one exists.
+
+> Informative: most host languages' built-in string-equality operations return
+> at the first differing element and do not satisfy this requirement — and a
+> host may provide no constant-time helper at all, in which case the portable
+> discharge is to accumulate a bitwise difference across all 64 positions and
+> test the accumulator once. On-device loopback gives an attacker
+> high-resolution local timing, and an early-exit comparison here also nullifies
+> the equal-work path Section 9.2 requires on the unknown-identity branch.
+
+The Companion
 MUST reject an absent or malformed proof as invalid params and a well-formed
 reused, mismatched, or incorrect proof as `1203 auth-failed`; it MUST then close
 the connection. Emacs MUST verify
@@ -1037,10 +1096,15 @@ After verifying the welcome, Emacs MUST perform these steps in order:
 4. call `queue.replay` and wait for it to conclude; and
 5. call `session.ready`.
 
-A replay that returns with `remaining > 0` because of a well-formed transient
-error has concluded for purposes of this barrier. Emacs MAY proceed to
-`session.ready`, but MUST preserve the backlog's FIFO priority and SHOULD retry
-replay in `READY` as required by Section 15.3.
+A replay concludes for purposes of this barrier when it returns any result,
+when it returns any JSON-RPC error, or when Emacs abandons the wait under a
+finite local deadline. In every such case Emacs MUST proceed to
+`session.ready`, MUST preserve the backlog's FIFO priority, MUST NOT issue a
+second `queue.replay` before entering `READY`, and SHOULD retry replay in
+`READY` as required by Section 15.3. A replay may make one round trip per
+retained event, up to `max_queued_events`; this document places no upper bound
+on its duration, so a requester's local deadline MUST NOT be the only thing
+that ends a `SYNCING` phase.
 
 The Companion MUST enter `READY` only after `session.ready` succeeds. While in
 `SYNCING`, it MUST NOT deliver newly generated remote events ahead of replayed
@@ -1544,7 +1608,7 @@ is invalid.
 | `on_add_row`, `on_add_col` | `index` |
 | `on_day_tap` | `value` as `YYYY-MM-DD` |
 | `on_month_change` | `value` as `YYYY-MM` |
-| `on_point_tap` | `value` as the authored point object |
+| `on_point_tap` | `value` as the authored point object and `index` as that point's zero-based ordinal index in the first series |
 
 Hooks without an entry in this table inject nothing.
 
@@ -2074,7 +2138,26 @@ on the full vocabulary gates the form check on the advertised feature set). The
 validate the media type and decoded bytes, enforce the three advertised image
 limits, and reject active or unsupported formats. An "active" format is any
 capable of scripting, external-reference resolution, or code execution — notably
-`image/svg+xml` — and MUST be rejected before decode. A Companion advertising
+`image/svg+xml` — and MUST be rejected before decode.
+
+The base64 payload of a `data:` URL MUST use the standard [RFC4648] alphabet
+with padding, MUST NOT be the base64url alphabet, and MUST NOT contain line
+breaks or any other whitespace; a sender MUST emit it as a single unbroken run.
+A Companion MUST reject a payload containing a character outside that alphabet
+and MUST NOT strip or normalize whitespace in place of rejection. A Companion
+MAY additionally accept a payload whose only extra characters are line feeds,
+provided it applies the same media-type, byte-count, and pixel limits after
+decoding; this tolerance is OPTIONAL and a sender MUST NOT rely on it. The same
+no-whitespace rule applies to the `icon_png` payload of Section 20.3.
+
+> Informative: several host base64 encoders wrap their output at a fixed column
+> by default and require an explicit argument to suppress it — Emacs's
+> `base64-encode-string` line-breaks at 76 columns unless its optional
+> NO-LINE-BREAK argument is passed. The tolerance exists so that a sender's
+> default-argument mistake degrades to a rendered image rather than rejection
+> of the whole snapshot, which Section 16.1 would otherwise require.
+
+A Companion advertising
 `image.data` MUST decode at least `image/png` and `image/jpeg`; `image/gif`,
 `image/webp`, `image/bmp`, and `image/heic`/`image/heif` are OPTIONAL.
 
@@ -2305,7 +2388,11 @@ uses `canvas`.
 If `on_point_tap` is present, the Companion MUST return the complete authored
 point object in `args.value`; it snaps the tap to the nearest authored point by
 ordinal index of the first series (the index clamped to that series' length),
-and there is no between-points null result. `summary` SHOULD provide an
+and there is no between-points null result. The resolved index is injected as
+Section 14.3 specifies. A receiver SHOULD use `index` to identify the tapped
+point; the echoed `value` is convenience data and is not an identity, because
+this section does not require authored points to be distinct and Section 4.3
+makes `1` and `1.0` equal. `summary` SHOULD provide an
 accessible textual equivalent.
 
 A canvas operation MUST have `op` and one of these closed shapes:
@@ -2426,12 +2513,25 @@ synchronized editor the resulting change flows to Emacs through Section 19 like
 any other local edit; an app that needs a semantic Emacs operation rather than
 this literal text transform MUST use `command` instead. The four values act on
 the cursor's line as follows. `promote` reduces its outline depth by one step: a
-line beginning with two or more `*` heading markers loses one leading `*`;
-otherwise a line beginning with two or more leading spaces loses two of them; a
-line already at minimum depth is unchanged. `demote` raises it by one step: a
-line beginning with `*` gains one leading `*`; otherwise a line whose first
-non-space character opens a bullet (`-`) or ordered (`N.` or `N)`) list item
-gains two leading spaces; any other line is unchanged. `move-up` exchanges the
+line beginning with two or more `*` characters FOLLOWED BY A SPACE loses one
+leading `*`; otherwise a line beginning with two or more leading spaces loses
+two of them, except that a line whose first non-space character is `*` MUST NOT
+be de-indented to column 0 and is instead unchanged; a line already at minimum
+depth is unchanged. `demote` raises it by one step: a line beginning with one or
+more `*` characters FOLLOWED BY A SPACE gains one leading `*`; otherwise a line
+whose first non-space character opens an unordered (`-`, `+`, or `*`) or ordered
+(`N.` or `N)`) list item gains two leading spaces; any other line whose first
+character is a space gains two leading spaces; any other line is unchanged.
+Within one line these two operations MUST be inverse: applying `demote` then
+`promote`, or `promote` then `demote`, MUST restore the exact original text
+whenever the first of the pair changed it.
+
+> Informative: the exclusion protecting a `*`-prefixed line from reaching
+> column 0, and the space requirement on the `*` heading form, exist because in
+> common outline text a `*` at column 0 followed by a space denotes a heading
+> while the same character indented denotes a list bullet. Without them
+> `promote` manufactures a heading out of an indented bullet that `demote`
+> cannot undo, and a single-star line such as `*bold* text` is corrupted. `move-up` exchanges the
 cursor's line with the line above it, keeping the cursor at the same column of
 that line, and MUST be a no-op on the first line; `move-down` exchanges it with
 the line below under the same rule and MUST be a no-op on the last line. An
@@ -2852,6 +2952,21 @@ len = old_length - del + scalar_length(text)
 It MUST apply a valid splice atomically. On any failure it MUST mark the
 session stale and MUST request resynchronization once; it MUST ignore further
 deltas until the resynchronization completes.
+
+Resynchronization adopts the Companion's state. An endpoint whose authoritative
+document REFUSED the splice — as opposed to one whose view merely fell out of
+sequence — MUST NOT let that adoption stand: after the resynchronization
+completes it MUST, at the new `seq: 0`, issue the `edit.apply` that restores its
+authoritative text. An endpoint MUST NOT suppress or override a document's own
+write protection in order to apply a received splice.
+
+> Informative: without this, the recovery path installs the refused edit as the
+> shared baseline — the document says no, the resync adopts the Companion's
+> text, and the refusal has silently become the new truth. Where a document is
+> not writable in full, Emacs SHOULD present the synchronized `editor` with
+> `read_only: true`; sub-document write protection has no representation in
+> this protocol, and a Companion is entitled to treat an editor it was not told
+> is read-only as fully writable.
 
 A delta's granularity is the Companion's choice. Local editing is applied to
 the shadow immediately and never waits for Emacs; the Companion MAY coalesce
