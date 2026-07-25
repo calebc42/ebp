@@ -434,6 +434,15 @@ A receiver MUST parse header field names case-insensitively. It MAY accept
 optional horizontal whitespace around a header value. It MUST reject a signed,
 fractional, empty, non-decimal, or overflowing `Content-Length` value.
 
+A header line is `name ":" [OWS] value`, where `name` is one or more octets in
+the range `0x21` through `0x7E` excluding `:`, and `value` is zero or more
+octets in the range `0x20` through `0x7E` plus horizontal tab. A line that does
+not match — an empty line inside the section, a line with no colon, or a line
+whose name or value carries a control, space, or non-ASCII octet — is a
+malformed header line. A receiver MUST NOT accept a `Content-Length` value
+containing an embedded control octet, and MUST match the value against the
+complete field value rather than against any line within it.
+
 A receiver MAY ignore an unknown syntactically valid ASCII header field. It
 MUST close the transport connection when the header section:
 
@@ -487,6 +496,17 @@ prohibited, including JSON-RPC batches. After reading a complete body:
 - a top-level array or non-object JSON value MUST produce one Invalid Request
   response with `id: null`; and
 - the receiver MAY continue the connection after either error.
+
+Where one body violates more than one rule of this section or of Section 4, a
+receiver MAY report any one of the applicable faults; this document imposes no
+detection order and conformance does not depend on which is reported. What is
+REQUIRED is that the body be rejected, that exactly one error response be sent,
+and that the reported code be the one this document assigns to the fault
+reported. A receiver that continues the connection MUST also deliver or process
+any complete message that preceded the faulty one in the same read, and MUST
+resume decoding any complete message that follows it: the stream stays
+synchronized across a body fault, so leaving a pipelined message undelivered is
+the unbounded stall Section 6.2's delegation paragraph and Section 22.3 forbid.
 
 The receiver obligations of this section, together with Section 4.1's
 duplicate-member and encoding rejections, are REQUIRED for the Companion: it
@@ -2875,6 +2895,15 @@ MUST NOT be applied: an inbound `edit.apply` that would exceed it MUST receive
 `1201 content-invalid` with `data.reason: "editor-too-large"` and MUST NOT change
 text, Emacs MUST NOT emit such a splice, and a Companion-local edit that would
 exceed the limit MUST be refused as if the editor were read-only.
+
+The seed carries the same bound as a receiver duty. The Companion MUST reject a
+surface or dialog mutation presenting a synchronized `editor` whose authored
+`value` exceeds `max_editor_bytes`, with `1201 content-invalid` and
+`data.reason: "editor-too-large"`, before the node is accepted. Without this the
+sender-side rule above has no enforcement point at the seed: an over-limit
+document is accepted, `edit.open` carries it, and every subsequent edit — local
+and inbound alike — is then refused by the rules above, leaving an editor that
+is silently and permanently read-only with no diagnostic in either direction.
 
 ### 19.5 Annotations
 

@@ -347,10 +347,19 @@ def decode_stream(chunks):
     while True:
         # fill until a complete header section or EOF
         while b"\r\n\r\n" not in buf and not ended:
+            # SPEC 6.2: the header section cap binds an UNTERMINATED header
+            # too — otherwise a peer that never sends CRLFCRLF makes the
+            # reference decoder buffer without bound, and the published
+            # algorithm would not enforce the MUST it documents. Both wire
+            # twins close at exactly this threshold.
+            if len(buf) > MAX_HEADER:
+                raise FrameError("close")
             try:
                 buf += next(chunks)
             except StopIteration:
                 ended = True
+        if b"\r\n\r\n" not in buf and len(buf) > MAX_HEADER:
+            raise FrameError("close")
         if b"\r\n\r\n" not in buf:
             if buf:
                 raise FrameError("incomplete-frame")
@@ -393,6 +402,11 @@ def decode_stream(chunks):
             raise FrameError("parse-error")
         # SPEC 4.5: refuse an over-deep body before the recursive parser runs.
         if exceeds_depth(text):
+            raise FrameError("parse-error")
+        # SPEC 4.1: "an unpaired surrogate escape is invalid and MUST be
+        # rejected rather than preserved or replaced" — json.loads preserves
+        # it, so the reference validator has to check for itself.
+        if any("\ud800" <= ch <= "\udfff" for ch in text):
             raise FrameError("parse-error")
         try:
             msg = json.loads(text, object_pairs_hook=reject_duplicates)
