@@ -1635,7 +1635,9 @@
       "max_children_per_node": 10000,
       "max_identifier_bytes": 128,
       "max_request_id_bytes": 64,
-      "max_method_bytes": 128
+      "max_method_bytes": 128,
+      "max_send_header_bytes": 128,
+      "max_node_depth": 20
     },
     "welcome": {
       "max_frame_bytes": {

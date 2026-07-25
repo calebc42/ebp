@@ -168,14 +168,25 @@ def check_action(obj: dict, path: str):
             problem(f"{path}: unknown action field `{key}`")
 
 
-def check_node(value, path: str):
+MAX_NODE_DEPTH = contract["limits"]["fixed"]["max_node_depth"]
+
+
+def check_node(value, path: str, depth: int = 0):
     if isinstance(value, list):
         for i, child in enumerate(value):
-            check_node(child, f"{path}[{i}]")
+            check_node(child, f"{path}[{i}]", depth)
         return
     if not isinstance(value, dict):
         return  # scalars carry no schema
     if "t" in value:
+        # SPEC 4.5/16.1 (amendment #108): node nesting depth. The 4.5
+        # JSON-container limit is a receiver bound, not a budget a sender may
+        # spend — host encoders cap well below it.
+        depth += 1
+        if depth > MAX_NODE_DEPTH:
+            problem(f"{path}: node nesting exceeds max_node_depth "
+                    f"({MAX_NODE_DEPTH}) — reason node-depth")
+            return
         t = value["t"]
         if t not in NODE_TYPES:
             problem(f"{path}: unknown node type `{t}`")
@@ -197,7 +208,7 @@ def check_node(value, path: str):
                 and isinstance(child, dict):
             check_action(child, f"{path}.{key}")
         else:
-            check_node(child, f"{path}.{key}")
+            check_node(child, f"{path}.{key}", depth)
 
 
 # ------------------------------------------------------------- frames -------

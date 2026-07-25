@@ -205,6 +205,8 @@ A receiver MUST enforce all of the following limits:
 | Children of one node | 10,000 |
 | Identifier | 128 UTF-8 octets and the ASCII grammar above |
 | Method name | 128 UTF-8 octets and the Section 4.4 ASCII grammar |
+| Header section a sender may rely on | 128 octets |
+| Node nesting depth in one surface, dialog, or notification document | 20 levels |
 
 Every core endpoint MUST accept otherwise valid core messages within these
 limits. Module-specific storage and content limits MUST be reported in the
@@ -259,6 +261,28 @@ representation, so optional escaping or whitespace cannot defeat the budget.
 A receiver MUST enforce these limits before durable admission or expensive
 decoding. A module MAY advertise a larger value but MUST NOT advertise a value
 it cannot sustain.
+
+These figures are receiver ACCEPTANCE bounds. They do not license a sender to
+construct a message its own encoder cannot emit. A sender that cannot serialize
+a message MUST fail the attempt locally, MUST NOT emit a truncated or partial
+frame, and SHOULD report the fault as a local diagnostic.
+
+The framing header-section figure is likewise a receiver rejection threshold,
+not a sender allowance: a sender MUST NOT rely on a peer accepting a header
+section longer than the 128-octet figure above. Accepting a header section up
+to the 8,192-octet cap is REQUIRED for the Companion and RECOMMENDED for the
+Emacs endpoint, which MAY delegate framing to a host JSON-RPC library whose
+header scan is bounded well below it.
+
+> Informative: host JSON encoders impose serialization-depth caps independent
+> of, and lower than, receiver acceptance limits — at least one in wide use
+> caps at 50 containers, about 25 levels of nesting, with no runtime override.
+> A generator mapping deep document structure onto nested container nodes
+> should flatten or paginate rather than spend the receiver's limit. Host
+> framing readers commonly parse the header section with a single bounded
+> pattern match — core `jsonrpc.el` 1.0.25 bounds it to 100 characters — and
+> fail by waiting rather than by closing, which is why the sender figure is far
+> below the receiver cap.
 
 `max_event_bytes` measures the exact UTF-8 JSON encoding of the complete
 `event.action.params` object chosen for persistence and transmission and does
@@ -421,7 +445,15 @@ Content-Length: <decimal-octet-count>\r\n
 The sender MUST use the ASCII spelling `Content-Length`, one ASCII space after
 the colon, an unsigned decimal integer with no leading zeroes except the value
 `0`, and CRLF line endings. The sender MUST NOT emit more than one
-`Content-Length` field. It SHOULD NOT emit any additional header field.
+`Content-Length` field. Under the `android-loopback-tcp` profile a sender MUST
+NOT emit any header field other than `Content-Length`; the header section is
+therefore exactly `Content-Length: <decimal-octet-count>\r\n\r\n`. A future
+transport profile that permits additional header fields MUST define their
+syntax, including whether whitespace after the colon is required, and MUST
+state the header-section budget an endpoint may rely on.
+
+A receiver counts and consumes body octets as transmitted; a length taken after
+any decoding step is not `Content-Length`.
 
 `Content-Length` MUST equal the number of octets in the UTF-8-encoded JSON body.
 It excludes every header octet and both terminating CRLF pairs. A sender MUST
@@ -488,6 +520,29 @@ retain incomplete header and body data across ordinary transport reads. EOF in
 the middle of a frame terminates the session; the receiver MUST NOT attempt to
 resynchronize by scanning arbitrary body bytes.
 
+A receiver MUST reach a terminal outcome once it has buffered a header-section
+prefix it cannot classify up to the 8,192-octet cap, and MUST NOT accumulate
+more unparsed octets for a single incomplete frame than `max_frame_bytes` plus
+that cap, whether the excess is declared in the header section or arrives as a
+body that never completes. This obligation binds every role: an unbounded stall
+is not a conforming alternative to the closes required above, and Section 22.3's
+transport-backpressure requirement is not satisfied by waiting.
+
+An endpoint delegating framing to a host JSON-RPC library SHOULD ensure the
+library's body accounting is octet-identical to the wire for arbitrary octets,
+and SHOULD close rather than continue when a frame's declared and consumed octet
+counts disagree; it MUST NOT locate a header section anywhere other than
+immediately after a fully consumed preceding frame.
+
+> Informative: a host decoder that maps malformed input to substitute characters
+> rather than failing can make a decoded body wider than the octets that
+> produced it. A length check in decoded units then under-consumes the frame,
+> and a header search implemented as a forward scan finds an attacker-authored
+> `Content-Length` line in the residue — a frame the peer never framed. An
+> implementation renting such a library can restore octet identity without
+> modifying it, by holding the transport and its accumulation buffer as
+> uninterpreted octets.
+
 One frame contains exactly one JSON-RPC Message object. Top-level arrays are
 prohibited, including JSON-RPC batches. After reading a complete body:
 
@@ -535,7 +590,14 @@ contains `jsonrpc`, `id`, and `result`. An error response contains `jsonrpc`,
 Every EBP request MUST receive exactly one response unless the connection dies
 first. The response MUST contain exactly one of `result` or `error`. A
 successful operation with no return data MUST use `result: {}`. `null` MUST NOT
-be used as a generic success result.
+be used as a generic success result. A responder that computes a result but
+cannot serialize the response body MUST answer the request with
+`-32603 internal-error`; it MUST NOT leave the request unanswered.
+
+> Informative: a host serializer may map its language's empty or nil value to
+> JSON `null` rather than `{}`. An endpoint MUST encode an empty JSON object
+> with a value its serializer maps to `{}`, and MUST NOT rely on its language's
+> empty-list or null value doing so.
 
 A notification MUST NOT receive a JSON-RPC response. A method's request or
 notification class is fixed by the method registry in Section 11.
@@ -1825,7 +1887,9 @@ transient gestures, or actions unsafe to replay.
 Every node MUST be a JSON object containing the required string discriminator
 `t`. A node's remaining members are defined by its type and by the universal
 attributes below. A surface tree MUST be acyclic when represented in memory and
-MUST fit the resource limits in Section 4.5.
+MUST fit the resource limits in Section 4.5. A document whose node nesting
+exceeds the depth in that table MUST be rejected with `1201 content-invalid`
+and `data.reason: "node-depth"`.
 
 A node's presentation identity is its `key` when present, otherwise its `id`
 when present, otherwise its structural tree path. A `key` MUST be unique among
