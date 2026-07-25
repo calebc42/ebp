@@ -1130,7 +1130,16 @@ every distinct Surface ID with a retained snapshot or tombstone. A never-seen
 Surface ID has a conceptual revision floor of `-1`, so any first non-negative
 revision is newer. A Companion
 MUST retain each tombstone revision floor until pairing revocation and MUST NOT
-reclaim it merely to admit a reused or new ID. At either limit, an update or
+reclaim it merely to admit a reused or new ID. A floor also survives the
+Companion's own inability to present the snapshot it belongs to. Where a
+Companion re-validates a retained snapshot — after a restart, or because its
+validator became stricter between versions — a snapshot it can no longer accept
+MUST NOT be presented or dispatched, but the Companion MUST retain that
+surface's history at its recorded revision, reporting it as a tombstone in the
+welcome so Emacs re-pushes. Discarding the history instead reclaims a floor the
+first sentence forbids reclaiming, after which a delayed older `surface.update`
+is answered `applied` rather than `stale` and the Section 24.6 item 7 race
+resolves the wrong way. At either limit, an update or
 remove request that would increase the corresponding count MUST receive
 `1201 content-invalid` with `data.reason: "surface-limit"`; updates and removals of
 already known IDs remain legal only when they do not increase the saturated
@@ -3609,6 +3618,19 @@ It MUST then close the connection. Outstanding requests fail locally and
 durable events without permanent results remain eligible for replay. An
 endpoint MUST rate-limit `log.error` and MUST NOT allow diagnostic reporting to
 become an additional overload source.
+
+The paragraph above governs exhausted capacity for work the peer sent. An
+endpoint reaching its own outstanding-request ceiling — the sender-side bound
+this section also requires — MUST NOT close the connection for that reason
+alone: the condition is self-inflicted and clears as answers arrive. It MUST
+instead fail the excess request locally, concluding it exactly once with
+`1401 overloaded` and without placing it on the wire, and it MUST NOT report a
+locally generated refusal to the peer as though the peer had answered. In
+particular a refusal MUST NOT be recorded as a received error under Section
+15.3: doing so would pause the durable queue and publish a `blocked_by` the
+peer never sent. A sender whose delivery mechanism is already single-flight —
+Section 15.3's replay pump is — is not bounded by this ceiling, because it
+cannot be the resource the ceiling protects.
 
 `log.error` params are `{code, message, data?}`. It is diagnostic and MUST NOT
 be treated as a response, acknowledgement, or authorization decision.
