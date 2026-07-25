@@ -1634,7 +1634,8 @@
       "max_nodes_per_snapshot": 10000,
       "max_children_per_node": 10000,
       "max_identifier_bytes": 128,
-      "max_request_id_bytes": 64
+      "max_request_id_bytes": 64,
+      "max_method_bytes": 128
     },
     "welcome": {
       "max_frame_bytes": {

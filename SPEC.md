@@ -193,6 +193,7 @@ A receiver MUST enforce all of the following limits:
 | Nodes in one surface snapshot | 10,000 |
 | Children of one node | 10,000 |
 | Identifier | 128 UTF-8 octets and the ASCII grammar above |
+| Method name | 128 UTF-8 octets and the Section 4.4 ASCII grammar |
 
 Every core endpoint MUST accept otherwise valid core messages within these
 limits. Module-specific storage and content limits MUST be reported in the
@@ -362,6 +363,23 @@ implicit broadcast, shell command, URI handler, or network destination MUST NOT
 be used. The wake signal MAY identify the non-secret pairing ID but MUST NOT
 contain the token, event payload, captured fields, or authentication proof.
 
+The wake signal is an authorization-bearing message to the Emacs host and MUST
+be inert. Its payload MUST be limited to the non-secret pairing ID and MUST NOT
+carry, or be able to be interpreted by the target as, startup arguments, a
+command line, code to evaluate, a file or library to load, an initialization
+file, an environment override, or any other parameter that influences how the
+Emacs host initializes or what it executes. A Companion MUST reject a
+user-configured wake target that requires such a parameter to function, and
+MUST re-verify inertness of the exact signal immediately before each send,
+alongside the target re-check this section already requires below.
+
+> Informative: on at least one target platform the only externally reachable
+> component of an Emacs host is its launcher activity, whose accepted extras
+> include a startup-argument array spliced directly into the host's command
+> line before initialization — arbitrary code execution in the endpoint
+> holding the pairing token, pre-authentication. Implementers send the
+> component start with no extras at all; a bare start cold-starts the host.
+
 After durably admitting a `wake` event, the Companion MAY signal that target to
 ask Emacs to dial the loopback listener. It MUST coalesce signals for the same
 pairing identity, MUST NOT signal more than once in 60 seconds, and MUST stop
@@ -526,6 +544,10 @@ parameters before invoking a handler.
 - Structurally invalid notification parameters MUST be reported through
   `log.error` when authenticated and otherwise MUST be logged and dropped.
 
+A receiver MUST NOT allocate unbounded or non-reclaimable state keyed by an
+unvalidated method name; method-name validation MUST precede any such
+allocation (Section 23.5).
+
 ### 7.4 Ordering and concurrency
 
 Each endpoint MUST parse frames in wire order. Each endpoint MUST dispatch
@@ -588,7 +610,8 @@ Error `1002` SHOULD include `data.permission` and MAY include
 `data.settings`, which the caller can pass to an advertised settings-opening
 capability. Error `1201` SHOULD include the rejected object path. An
 implementation MUST NOT include secrets, password values, clipboard contents,
-SMS bodies, or other sensitive values in an error.
+SMS bodies, or other sensitive values in an error. Section 23.3 extends this
+exclusion to every diagnostic facility of a delegated host library.
 
 Framing failures that force connection closure are transport errors and do not
 require a JSON-RPC response. A receiver MAY name a size-cap framing failure to
@@ -613,15 +636,30 @@ octets as the HMAC key. The pairing ID MUST be displayed and transmitted as 32
 lowercase hexadecimal characters.
 
 The token MUST be stored in storage private to each endpoint, MUST NOT cross the
-EBP wire, and MUST NOT appear in logs, errors, Goldens, or crash reports. Where a
-platform provides keystore-backed encrypted storage, the pairing token and any
-recoverable HMAC key material MUST use it, on the same unconditional terms as
-Section 21.5's sensitive queued data, and MUST NOT be held in plaintext
-application storage weaker than the protection Section 23.3 requires for the SMS
-and call data the token's authority can reach. A Companion on a platform with no
-such facility MUST make that limitation explicit and MUST NOT persist a pairing
-under weaker protection. The
-pairing ID is not secret and selects the correct token and persistent state
+EBP wire, and MUST NOT appear in logs, errors, Goldens, or crash reports. Where
+the platform provides keystore-backed encrypted storage, the Companion MUST hold
+the pairing token and any recoverable HMAC key material under it, on the same
+unconditional terms as Section 21.5's sensitive queued data, and MUST NOT hold
+them in plaintext application storage weaker than the protection Section 23.3
+requires for the SMS and call data the token's authority can reach.
+
+An endpoint whose platform provides such a facility but exposes no interface to
+it from the endpoint's implementation environment, and an endpoint on a platform
+with no such facility, MUST instead meet the following floor: the token MUST be
+written only to storage the platform reserves to that endpoint's own application
+identity, with the most restrictive access mode the platform offers; it MUST NOT
+be written to storage shared with another application identity, to user-visible
+or externally browsable storage, or to any location the endpoint exports to
+other applications; and the endpoint MUST make the reduced protection explicit
+to the user at pairing time. An endpoint that cannot meet that floor MUST NOT
+persist the pairing and MUST require re-pairing each session.
+
+> Informative: an endpoint's nominally private directory may be browsable
+> through a system document-provider or shared outright under a common platform
+> user identity; keep the token outside any exported subtree, or treat the
+> floor as unmet.
+
+The pairing ID is not secret and selects the correct token and persistent state
 partition without trial-HMAC against unrelated tokens.
 
 The Companion MUST provide explicit pairing revocation. Revocation MUST
@@ -995,6 +1033,11 @@ means `READY`.
 An implementation MUST NOT add a method to this registry without specifying
 its sender, class, legal states, capability gate, complete parameter/result
 schema, errors, ordering, atomicity, and retry behavior.
+
+A method name MUST be a Section 4.4 identifier within the Section 4.5 bound.
+A receiver MUST reject a request whose method name is not such an identifier
+with `-32601`, and MUST log and ignore such a notification, without consulting
+the registry.
 
 ## 12. Versioning and compatibility
 
@@ -2559,6 +2602,23 @@ MUST equal that selected seed exactly. Emacs MUST NOT present a synchronized
 `edit.resync` result text MUST fit it, so both full-state carriers frame within
 `max_frame_bytes`.
 
+Emacs MUST NOT present a synchronized `editor` whose document text is not a
+sequence of Unicode scalar values. An endpoint MUST NOT substitute, drop, or
+replace any character in order to make a document, an `edit.apply` splice, an
+`edit.delta`, or an `edit.resync` result representable; a document that cannot
+be represented losslessly is not eligible for synchronization. If an
+authoritative document acquires such text while a session is open, Emacs MUST
+withdraw the synchronized `editor` using the mechanisms named below — node
+removal, surface tombstoning, document change, or presentation-identity change
+— rather than emit a lossy splice.
+
+> Informative: some host text models admit single text positions that are not
+> scalar values — undecodable raw bytes retained verbatim, code points not
+> unified with Unicode, unpaired surrogates. Such a position is one position
+> but zero scalar values, so Section 19.1's arithmetic does not apply; a 1:1
+> replacement character keeps every Section 19.3 length check passing while
+> the two texts silently differ.
+
 When a synchronized editor first becomes present in `READY`, the Companion MUST
 create a fresh session and send `edit.open` before sending any delta, caret,
 completion, annotation-related request, or editor command for it. If the node
@@ -3038,6 +3098,9 @@ this schema:
 | `dedupe` | identifier | no | Valid only for `queue` and `wake` |
 | `throttle_s` | integer `1..604800` | no | Omission means no throttle |
 | `on_fire` | array of local response objects | no | `[]`; at most `limits.max_trigger_responses` entries |
+
+For `policy: wake`, the signal the Companion later sends is governed by
+Section 5.3 in full, including its inertness rule.
 
 The Companion MUST validate the complete set, including every type, predicate,
 offline policy, local response, resource limit, and required permission
@@ -3541,6 +3604,24 @@ diagnostics, Goldens, or crash reports. Implementations SHOULD
 redact all user-supplied strings by default and enable detailed payload logging
 only through an explicit developer setting.
 
+Section 6.2's delegation allowance does not extend to a host library's
+diagnostics. Where an endpoint delegates framing, decoding, or message dispatch
+to a host JSON-RPC library, it MUST, before the first frame is exchanged on a
+connection, disable or redact every facility of that library that records raw
+frame bodies, decode failures, or message payloads, so that no value named in
+this section is written to any log, trace buffer, warning, or diagnostic sink.
+An endpoint MUST NOT assume such a facility is disabled by default, and MUST
+NOT enable it for a connection carrying a value named in this section. Where
+such logging is retained under the explicit developer setting above, it MUST be
+bounded in size and lifetime.
+
+> Informative: core Emacs `jsonrpc.el` 1.0.25 defaults its events buffer to
+> `(:size nil :format full)` with `jsonrpc--log-event` installed on
+> `jsonrpc-event-hook` — unbounded, both directions, never trimmed — and
+> additionally routes undecodable frame bodies through `display-warning`.
+> Constructing the connection with `:events-buffer-config '(:size 0)` and
+> removing the hook satisfies this rule.
+
 Persistent queues and input snapshots MUST use app-private storage. Where a
 platform provides keystore-backed encrypted storage, sensitive queued trigger
 data MUST use it. Durable event payloads and captured input snapshots MUST be
@@ -3566,6 +3647,23 @@ resources. They MUST bound decoded images, base64 payloads, canvas operations,
 rich-text spans, table cells, chart points, trigger registrations, reminders,
 editor sessions, and outstanding dialogs. They MUST reject excessive content
 atomically and MUST NOT partially execute a rejected object.
+
+Decoding MUST NOT let a peer's choice of names grow an unbounded
+process-lifetime table. Where a receiver's decoder maps wire-supplied member
+names, method names, or enum values into a process-global interning pool,
+symbol table, or equivalent structure whose entries are not reclaimed when the
+message, session, or connection ends, the receiver MUST select a decoding mode
+that does not intern peer-supplied names, or MUST bound and reclaim that pool.
+This obligation is not satisfied by rejecting the unknown name after decoding:
+the allocation occurs first. It applies to names the receiver is required to
+tolerate under Section 12 rule 1 and to names it rejects under Section 7.3.
+This obligation is not relaxed by Section 6.2: the cost is permanent and
+cross-session, not per-frame.
+
+> Informative: Emacs `json-parse-string` interns member names for
+> `:object-type` `plist` and `alist` but not for `hash-table`; core
+> `jsonrpc.el` hard-codes `plist` and additionally `intern`s the method name
+> before any dispatch check.
 
 ### 23.6 Local transport limitations
 
@@ -3622,6 +3720,15 @@ A conforming EBP 2 Emacs endpoint MUST implement:
   durable event-ID retention, and permanent event results;
 - safe surface and event retry behavior; and
 - sender-side resource limits and load management.
+
+An Emacs endpoint claims conformance for GNU Emacs 30.1 or later. Two clauses
+of this document are calibrated to that floor: Section 4.5's recursion
+carve-out assumes a host JSON-RPC library whose native JSON decoder bounds
+recursion by its own means, which holds unconditionally only from Emacs 30 on
+(earlier releases can build without native JSON support, degrading the blessed
+library to a recursive Lisp reader), and Section 9's HMAC construction relies
+on a hashing primitive that is unconditional core in 30.1. A port to an older
+host MUST re-derive both properties rather than assume them.
 
 ### 24.3 Optional module conformance
 
@@ -3690,7 +3797,9 @@ A core conformance suite MUST include at least:
    oversized declarations, invalid UTF-8, invalid JSON, over-deep JSON nesting,
    duplicate members, and prohibited batch arrays;
 4. wrong-direction, wrong-class, unknown-request, and unknown-notification
-   dispatch;
+   dispatch; an over-long and a non-identifier method name; and a frame
+   carrying many distinct unknown member names plus a run of distinct unknown
+   method names, verified not to cause unbounded process-lifetime growth;
 5. pre-auth request and notification refusal;
 6. the Section 9.3 HMAC known-answer vector plus bad, replayed, and mismatched
    authentication proofs;
@@ -3701,7 +3810,8 @@ A core conformance suite MUST include at least:
 10. queued-event expiry, dedupe replacement, queue capacity exhaustion, and
     replay interruption;
 11. an offline input draft followed by surface synchronization and replay;
-12. password-state exclusion from persistence and logs;
+12. password-state and authentication-proof exclusion from persistence, logs,
+    warnings, and any delegated host-library message trace;
 13. unknown node, field, enum, builtin, capability, trigger, and predicate
     behavior; and
 14. bounded overload behavior for each traffic class.
