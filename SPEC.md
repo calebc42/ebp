@@ -139,7 +139,7 @@ An EBP integer MUST be mathematically integral and MUST be in the inclusive
 range `-9007199254740991` through `9007199254740991`. Fields declared
 non-negative MUST be in the inclusive range `0` through `9007199254740991`.
 Revisions, sequence numbers, timestamps, and counts MUST NOT exceed this range.
-EBP request IDs are strings; Section 7.2 prohibits numeric request IDs.
+EBP request IDs are strings or safe integers as Section 7.2 defines.
 
 A JSON number used where this document says `number` MUST convert under
 round-to-nearest, ties-to-even to a finite IEEE-754 binary64 value. A sender
@@ -235,6 +235,7 @@ representation, so optional escaping or whitespace cannot defeat the budget.
 | `max_trigger_responses` | REQUIRED when `triggers` is granted; maximum `on_fire` entries per trigger |
 | `max_reminders` | REQUIRED when `reminders.owner` is granted |
 | `max_editor_sessions` | REQUIRED when `editor.sync` is granted |
+| `max_editor_bytes` | REQUIRED when `editor.sync` is granted; maximum encoded bytes (UTF-8 length of the JCS-serialized document text) of one synchronized editor document; at least `65536` and no greater than `max_frame_bytes - 4096` |
 | `max_dialogs` | REQUIRED when `surfaces.dialog` is granted |
 | `max_pie_menus` | REQUIRED when `presentation.pie-menu` is granted; at least `1` |
 | `max_device_report_bytes` | REQUIRED when `capabilities` or `triggers` is granted; maximum canonical bytes of the complete device report |
@@ -336,7 +337,12 @@ The `android-loopback-tcp` core profile permits exactly one paired Emacs
 authority and one authenticated authoritative session at a time. Creating a new
 pairing MUST first revoke the old pairing under Section 9.1. When a new session
 authenticates successfully, the Companion MUST terminate the older session
-before the new session enters `SYNCING`. A future multi-authority profile MUST
+before the new session enters `SYNCING`. The Companion MUST continue to accept
+new loopback connections and allow each to attempt the Section 9 handshake while
+an authenticated session exists — supersession depends on it — and MUST bound the
+number of concurrent pre-authentication connections. A listener that refuses or
+ignores a second dial while a session, possibly a zombie whose transport has not
+yet closed, is open is non-conformant. A future multi-authority profile MUST
 define active-identity selection, visible-surface and theme ownership, trigger
 execution, and platform-artifact namespacing; this profile does not. Within this
 single-authority profile, trigger firing and reminder presentation are
@@ -532,8 +538,9 @@ TCP byte ordering does not by itself satisfy these application-order rules.
 
 After authentication, either endpoint MAY send `rpc.cancel` for an outstanding
 request it originated.
-Its params MUST be `{id}` where `id` is the exact string request ID being
-cancelled. A malformed cancellation notification MUST be logged and ignored.
+Its params MUST be `{id}` where `id` is the exact request ID being cancelled — a
+JSON string or a safe integer — matched against the outstanding request's `id` by
+Section 4.3 equality. A malformed cancellation notification MUST be logged and ignored.
 The receiver SHOULD stop work when cancellation is safe. If cancellation takes
 effect, the original request MUST conclude with error `1301 request-cancelled`.
 If the request already completed, the cancellation MUST be ignored. Cancellation
@@ -600,17 +607,31 @@ octets as the HMAC key. The pairing ID MUST be displayed and transmitted as 32
 lowercase hexadecimal characters.
 
 The token MUST be stored in storage private to each endpoint, MUST NOT cross the
-EBP wire, and MUST NOT appear in logs, errors, Goldens, or crash reports. The
+EBP wire, and MUST NOT appear in logs, errors, Goldens, or crash reports. Where a
+platform provides keystore-backed encrypted storage, the pairing token and any
+recoverable HMAC key material MUST use it, on the same unconditional terms as
+Section 21.5's sensitive queued data, and MUST NOT be held in plaintext
+application storage weaker than the protection Section 23.3 requires for the SMS
+and call data the token's authority can reach. A Companion on a platform with no
+such facility MUST make that limitation explicit and MUST NOT persist a pairing
+under weaker protection. The
 pairing ID is not secret and selects the correct token and persistent state
 partition without trial-HMAC against unrelated tokens.
 
 The Companion MUST provide explicit pairing revocation. Revocation MUST
 atomically fence the identity from new authentication, close its active
 sessions, erase its token, queued payloads, input drafts, cached surfaces,
-tombstones, themes, reminders, triggers, and
+cached fetched image content, tombstones, themes, reminders, triggers, and
 identity-scoped shortcuts, and withdraw identity-scoped visible artifacts where
 the platform permits. Re-pairing creates a new pairing ID and an empty state
 partition.
+
+Revocation MUST be recorded durably before or atomically with the fence, and the
+erasure of every listed category MUST be completed — resumed after any process or
+device restart — until it is gone. "Atomically" names the fence: a crash after
+fencing but before erasure completes MUST NOT leave a fenced identity whose
+triggers or reminders still fire (Sections 21.1, 18.6) or whose sensitive queued
+payloads survive on disk.
 
 The Emacs endpoint MUST likewise provide local removal of a pairing and erase
 its token and EventId receipt records when the user invokes it. Revocation at
@@ -648,7 +669,15 @@ The params schema is:
 
 Unknown optional hello members MUST be ignored under Section 12. Duplicate
 capability names make the params invalid. A protocol mismatch MUST receive
-`1202 protocol-version`; another invalid hello field MUST receive `-32602`.
+`1202 protocol-version`; another invalid hello field MUST receive `-32602`. A
+well-formed `session.hello` whose `pairing_id` matches no stored pairing MUST
+receive a normal fresh `server_nonce` challenge, indistinguishable from a known
+ID; the Companion MUST NOT answer the hello itself with `1203` or any signal that
+the ID is unknown. The subsequent `auth.response` MUST be verified with work
+equivalent to the known-ID path — an HMAC-SHA256 computation against a fixed dummy
+key and a constant-time comparison — and rejected with `1203 auth-failed`, so
+neither the failure stage, the error code, nor response timing distinguishes an
+unknown pairing ID from an incorrect proof (Section 9.1).
 
 The Companion MUST create a fresh server nonce and return:
 
@@ -888,8 +917,15 @@ that successful response; the Companion MAY enter `READY` once the response is
 committed to an outbound order that guarantees those bytes come first. The
 Companion MUST then clear the surface-disconnection staleness timer and MUST
 immediately flush as ordered `state.changed` notifications every divergent
-non-password value changed after the welcome snapshot or during `SYNCING`,
-using the accepted revision currently shown, even when no event is pending.
+non-password value changed after the welcome snapshot or during `SYNCING`, even
+when no event is pending. Each flushed notification carries the `revision_seen`
+Section 14.6 requires — the revision of the accepted snapshot presented to the
+user when that value was changed, and for a value changed while disconnected the
+welcome-reported revision — never the revision currently shown; and a value whose
+ID an accepted snapshot at a higher revision named in `reset_input_ids` MUST be
+discarded unsent, as Section 14.6 requires. This on-`READY` flush is the sole path
+by which a value changed during `SYNCING` reaches Emacs, because `state.changed`
+is legal only in `READY`.
 Only after that flush MAY it release newly generated events under Section
 15.3's durable-backlog
 ordering rules.
@@ -1157,7 +1193,9 @@ by the action descriptor itself.
 
 For each stateful node, the Companion MAY hold a locally dirty value newer than
 the last value declared by Emacs. A new surface snapshot MUST NOT overwrite
-that dirty value merely because the snapshot was refreshed.
+that dirty value except in the conditions enumerated below; in particular a
+snapshot that carries a different authored `value` for the node does not by
+itself overwrite the draft.
 
 The Companion MUST clear a dirty value when any of these occurs:
 
@@ -1165,6 +1203,10 @@ The Companion MUST clear a dirty value when any of these occurs:
 - the node ID disappears from the accepted snapshot;
 - the same ID is reused for a different node type or incompatible value schema;
 - the ID appears in `reset_input_ids`.
+
+These four conditions are the only circumstances in which a compatible dirty
+value is cleared; a snapshot that merely carries a different authored value does
+not overwrite the draft.
 
 Value-schema compatibility is exact:
 
@@ -1184,6 +1226,11 @@ Anything else is incompatible. The Companion MUST erase an incompatible draft
 and seed the node from the newly authored value or that node's default, without
 emitting `state.changed` or a user action. A transition to password input MUST
 use Section 14.6's secret-erasure rules.
+
+A local `editor` node's live text is preserved across a same-presentation-identity
+snapshot regardless of `publish_state`: the authored `value` seeds only a new
+presentation identity, and a `publish_state: false` editor — which cannot be
+named in `reset_input_ids` — reseeds only on a presentation-identity change.
 
 Emacs SHOULD reflect welcome `input_state` values in its first synchronized
 surface push. Emacs MAY use `reset_input_ids` when application policy
@@ -1237,6 +1284,13 @@ The safe default is `when_offline: "drop"`. Emacs MUST opt in explicitly to
 durable replay. It MUST NOT author `wake` unless `offline.wake` was granted.
 `ttl_s` and `dedupe` MUST be absent when `when_offline` is `drop`; `ttl_s` MUST
 be present for `queue` and `wake`.
+
+The wake signal (Section 5.3) is authorized by the current session's
+`offline.wake` grant, not by a persistently configured wake target alone. A
+Companion that receives a descriptor whose `when_offline` is `wake` in a session
+that did not grant `offline.wake` MUST reject the containing document with
+`1201 content-invalid`, and MUST NOT signal any wake target — even one configured
+in a prior session — for such a descriptor.
 
 `capture_fields` is valid only for a descriptor inside a surface or dialog
 containing every named stateful node. Its length MUST NOT exceed
@@ -1576,6 +1630,14 @@ Companion MUST advance that mark when time moves forward; clock rollback MUST
 NOT extend an event's lifetime. It MUST delete expired records before delivery
 and MUST count them in the next replay summary.
 
+A durable (`queue` or `wake`) event's `occurred_at_ms` and `queued_at_ms` MUST be
+read from this effective wall clock, not the raw device clock. Equivalently, a
+newly admitted event's stored expiration time MUST grant it the full `ttl_s` of
+effective-clock lifetime measured from admission, so a backward clock change at or
+before admission cannot satisfy the expiry predicate against the event's own
+creation stamp. This matches amendment #47's pinning of `time.at_ms` to the
+effective clock.
+
 When a newly queued event has a `dedupe` key, the Companion MUST atomically
 remove every older queued, non-in-flight event with the same key and pairing
 identity. It MUST NOT remove or replace an event whose `event.action` request is
@@ -1588,12 +1650,14 @@ idempotence.
 ### 15.3 `queue.replay`
 
 The Companion MUST maintain one single-file durable delivery pump. At most one
-durable `event.action` request may be in flight. While `READY`, admission of a
-new head event MUST start or wake that pump unless it is paused by a prior
-transient error. A permanent result deletes the head and advances the pump; a
-JSON-RPC error retains the head and pauses it. Admission of a later event MUST
-NOT clear that pause or bypass the head. During `SYNCING`, only the explicit
-replay request starts the pump.
+durable `event.action` request may be in flight. The pump MUST run whenever the
+session is `READY`, the queue is non-empty, no durable `event.action` request is
+in flight, and the pump is not paused by a prior transient error — regardless of
+whether the head was admitted while `READY` or during `SYNCING`. Entering
+`READY`, after the Section 10.3 flush, MUST start it. A permanent result deletes
+the head and advances the pump; a JSON-RPC error retains the head and pauses it.
+Admission of a later event MUST NOT clear that pause or bypass the head. During
+`SYNCING`, only the explicit replay request starts the pump.
 
 `queue.replay` params are `{}`. Only one replay may be active. A concurrent
 request MUST receive `1600 queue-busy`.
@@ -1679,9 +1743,14 @@ erase a compatible draft; changing or removing the input ID, type, or value
 schema MUST erase it as Section 13.6 requires.
 
 The Companion MUST validate an entire SurfaceSpec before accepting its surface
-revision. A malformed node, invalid required field, invalid action descriptor,
-duplicate stateful-node ID, or resource-limit violation MUST reject the entire
-update with `1201 content-invalid`.
+revision. A malformed node, invalid required field, an optional member present with a
+value outside its declared type or domain, invalid action descriptor, duplicate
+stateful-node ID, or resource-limit violation MUST reject the entire update with
+`1201 content-invalid` — except a member that defines a safe fallback for an
+unrecognized value under Section 12 rule 6 (such as `text.style` falling back to
+`body` or `dialog.style` to `dialog`), which is applied instead of rejection. A
+receiver MUST NOT coerce, clamp, or silently drop an out-of-domain member in
+place of this rejection.
 
 ### 16.2 Required core and unknown nodes
 
@@ -1791,7 +1860,7 @@ limits.
 
 Fields named `id` and `key` are identifiers; `color` and `bg` are Colors;
 `width`, `height`, `size`, `radius`, and coordinate fields are finite numbers;
-and `scroll`, `selectable`, `selected`, and boolean-valued `fill` are booleans.
+and `scroll`, `selectable`, boolean-valued `selected`, and boolean-valued `fill` are booleans.
 Where a table lists a member without an inline type, these common types or the
 member-specific prose immediately after the table supplies its type. These
 definitions are cumulative and MUST be projected together into `contract.json`;
@@ -1852,6 +1921,12 @@ MUST reject loopback, private, link-local, multicast, unspecified, and other
 non-public destination addresses. It MUST NOT follow a redirect to another URI
 scheme. On any failure it MUST render `content_description` or a neutral
 placeholder and MUST NOT expose response content as an executable format.
+
+Fetched or decoded image content MAY be cached to satisfy re-rendering and
+Section 13.5 disconnected presentation; any such cache MUST be app-private, scoped
+to the pairing identity, and erased on pairing revocation (Section 9.1). While
+disconnected a Companion MAY render a cached image, or MUST otherwise render
+`content_description` or a neutral placeholder.
 
 ### 17.3 Layout nodes
 
@@ -2419,9 +2494,15 @@ reboot, persisting the accepted set is not sufficient by itself — the Companio
 must also re-arm the platform alarms for unfired reminders from the persisted
 set after a device restart, or the surviving registrations will never fire.
 
-At or after `at_ms`, the Companion MUST present the reminder at most once for
-that accepted `(owner, id, at_ms)` tuple and MUST persist fired state before or
-atomically with presentation so a restart does not deliberately re-fire it.
+At or after `at_ms`, the Companion MUST present the reminder for that accepted
+`(owner, id, at_ms)` tuple **at least once** — promptly at or after `at_ms`,
+including promptly at restore or re-arm when `at_ms` passed while the process or
+device was down — and **at most once**, and MUST persist fired state before or
+atomically with presentation so a restart does not deliberately re-fire it or
+drop it. The at-least-once obligation lapses only while the tuple is removed or
+replaced before presentation, or while the platform notification permission is
+withdrawn; in the latter case the Companion MUST present on the next opportunity
+after permission is restored if `at_ms` has passed and the tuple has not fired.
 Replacing an unchanged tuple preserves fired state; changing `at_ms` creates a
 new schedule. Removing a reminder MUST delete its fired receipt; re-adding the
 same tuple later creates a new schedule and MAY present again. User dismissal
@@ -2447,7 +2528,10 @@ falls back to the cached snapshot's authored `value`. An accepted update during
 the next `SYNCING` phase replaces that volatile text and explicitly seeds the
 forthcoming session. If no such update arrives, the fresh session uses the
 currently displayed volatile shadow or cached authored value. `edit.open.text`
-MUST equal that selected seed exactly.
+MUST equal that selected seed exactly. Emacs MUST NOT present a synchronized
+`editor` whose document text exceeds `max_editor_bytes`; `edit.open.text` and the
+`edit.resync` result text MUST fit it, so both full-state carriers frame within
+`max_frame_bytes`.
 
 When a synchronized editor first becomes present in `READY`, the Companion MUST
 create a fresh session and send `edit.open` before sending any delta, caret,
@@ -2537,6 +2621,13 @@ satisfy `sel_start <= sel_end`; they MUST appear together or both be omitted.
 When omitted, both default to `cursor`. `cursor` MUST equal one end when the
 selection is non-collapsed. This paired-or-omitted rule applies to every editor
 message carrying selection members.
+
+On receiving `edit.open`, Emacs MUST compare `edit.open.text` against its current
+document for that `document`. Where they diverge, Emacs MUST reconcile explicitly
+— adopting the seed, issuing a reconciling `edit.apply`, or surfacing a conflict
+to the user — and MUST NOT silently overwrite a seed that is newer than the last
+delta it accepted, nor issue a blind whole-document `edit.apply` that discards the
+user's visible text.
 
 `edit.delta` is an ordered notification:
 
@@ -2665,6 +2756,12 @@ It MUST return `{status:"applied", seq}` on success or
 text-changing apply SHOULD be one native undo step. A move-only form succeeds
 only at the current sequence.
 
+A text-changing operation that would carry the document past `max_editor_bytes`
+MUST NOT be applied: an inbound `edit.apply` that would exceed it MUST receive
+`1201 content-invalid` with `data.reason: "editor-too-large"` and MUST NOT change
+text, Emacs MUST NOT emit such a splice, and a Companion-local edit that would
+exceed the limit MUST be refused as if the editor were read-only.
+
 ### 19.5 Annotations
 
 `diagnostics.show` params are `{editor_id, session, seq, diagnostics}`. Each
@@ -2734,7 +2831,8 @@ platform grants. `settings_panels` is REQUIRED when `settings.open` appears in
 positive-knowledge list; omission MUST NOT mean unrestricted access.
 `trigger_types`, `trackable_state_types`, and `trigger_unavailable` are REQUIRED
 when `triggers` is granted and otherwise MAY be empty. `state_types` is REQUIRED
-when either `triggers` is granted or `state.get` appears in `caps`.
+when either `triggers` is granted or `state.get` appears in `caps`; it lists
+sampleable state types and MUST NOT include a predicate-only type (Section 21.7).
 
 The complete device report's canonical size under Section 4.5 MUST NOT exceed
 `limits.max_device_report_bytes`. A Companion whose full catalog would exceed
@@ -2854,9 +2952,12 @@ Each `device.intent_allowlist` entry is a closed object containing `action` and
 `service`; the four plural members are arrays of distinct exact strings;
 `trigger` defaults to `false`. There are no wildcards. A request matches only
 when `action`, effective `mode`, `package`, and `class_name` exactly equal the
-entry, including matching absence; any data URI has a listed scheme and, when
-present, a listed authority; any MIME type is listed; and every extras key is
-listed. `class_name` requires `package`. URI user-information is prohibited.
+entry, including matching absence; any data URI has a listed scheme and, if the
+URI carries an authority component, a listed authority; any MIME type is listed;
+and every extras key is listed. An absent `schemes`, `authorities`, `mime_types`,
+or `extra_keys` member is an empty allowlist, not an unimposed constraint: a
+request carrying a data URI, a URI authority component, a MIME type, or an extras
+key that the corresponding member does not list MUST NOT match and MUST be denied. `class_name` requires `package`. URI user-information is prohibited.
 
 The Companion MUST reject an `intent.start` request that matches no entry with
 error `1003 cap-failed` and `data.reason: "intent-denied"`. It MUST NOT fall back
@@ -2914,7 +3015,15 @@ this schema:
 
 The Companion MUST validate the complete set, including every type, predicate,
 offline policy, local response, resource limit, and required permission
-descriptor, before changing registrations. Acceptance MUST atomically replace
+descriptor, before changing registrations. A trigger's *required permission
+descriptor* is the set of OS permission(s) its `type` (per the Section 21.5
+catalog) and its `on_fire` capabilities need; validating it means those
+permissions are identifiable, not that they are currently granted. A shape-valid
+entry whose `type` appears in `device.trigger_types` MUST be accepted and stored
+even when a required permission is currently withdrawn: the Companion stores it
+unarmed (Section 21.8) and arms it when permission is restored. Permission grant
+state MUST NOT be a `1101 triggers-rejected` cause and MUST NOT fail the atomic
+replace-set. Acceptance MUST atomically replace
 the previous set for the pairing identity and return `{count}`, where `count`
 is a non-negative integer equal to the accepted array length. Rejection MUST
 use `1101 triggers-rejected`, MUST identify the failing trigger where safe, and
@@ -3002,9 +3111,12 @@ expression, OR, or arbitrary negation. An empty array holds. A predicate that
 cannot be evaluated because of an unknown type, unavailable permission, or
 platform failure MUST count as not holding.
 
-Emacs MUST include a gate only when every predicate type appears in
-`device.state_types`. If any type is absent, Emacs MUST omit the entire trigger;
-it MUST NOT remove the unsupported predicate and install a weaker trigger.
+Emacs MUST include a gate only when every predicate type that is not
+predicate-only appears in `device.state_types`. A predicate-only type (Section
+21.7) is available in a gate whenever `triggers` or `state.get` is granted and
+never appears in `device.state_types`. If a non-predicate-only type is absent,
+Emacs MUST omit the entire trigger; it MUST NOT remove the unsupported predicate
+and install a weaker trigger.
 
 The Companion MUST reject a malformed gate atomically. Evaluation MUST
 terminate and MUST perform no polling or unbounded work.
@@ -3237,7 +3349,11 @@ sample object from the table above. `states` is REQUIRED, even when empty.
 `unavailable`, when non-empty, maps each requested but unsampled type to a stable
 identifier string and otherwise MUST be omitted. Parameterized `time.window`
 predicates are valid only inside `when`
-and do not create a `states` entry. When `when` is supplied, `holds` MUST be the
+and do not create a `states` entry. `time.window` is the sole predicate-only
+state type: it is a valid `when` predicate but never a sampleable or trackable
+state type, so it never appears in `device.state_types`,
+`device.trackable_state_types`, `state.get.types`, or a `state.edge`.
+`contract.json` projects the predicate-only set as `predicate_only_state_types`. When `when` is supplied, `holds` MUST be the
 boolean result of the same evaluator used for trigger gates, including any such
 time window; otherwise `holds` MUST be omitted.
 
@@ -3368,8 +3484,10 @@ separately specified user trust policy.
 ### 23.3 Sensitive values
 
 Pairing tokens, authentication proofs, password values, clipboard contents,
-SMS bodies, call numbers, and private editor content MUST NOT appear in normal
-logs, metrics, diagnostics, Goldens, or crash reports. Implementations SHOULD
+SMS bodies and sender identifiers, call numbers, calendar event titles and times,
+private editor content, and the captured fire data of any privacy-sensitive
+trigger source named in Section 21.4 MUST NOT appear in normal logs, metrics,
+diagnostics, Goldens, or crash reports. Implementations SHOULD
 redact all user-supplied strings by default and enable detailed payload logging
 only through an explicit developer setting.
 
