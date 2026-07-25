@@ -877,7 +877,7 @@ distinct `node_types`, `builtins`, and `features` arrays and MUST list exactly
 what the Companion will honor on that target during this session. Emacs MUST
 gate every emitted node, builtin, and constraining feature against the target
 profile and MUST NOT interpret a missing profile or list as support for
-everything.
+everything. Section 22.4 registers the constraining-feature vocabulary.
 
 The applicable target is `app` for `app:*`, `notification` for
 `notification:*`, `widget` for `widget:*`, `tile` for `tile:*`, and `dialog` for
@@ -1131,10 +1131,21 @@ The namespace determines the exact SurfaceSpec variant:
 | `app:*` | One root Node or the multi-view object below |
 | `notification:*` | `{body: Node, meta?}` from Section 18.5; multi-view is prohibited |
 | `widget:*` | `{title: string, body: Node, empty?: Node, header_action?: ActionDescriptor}`; multi-view is prohibited |
+| `tile:*` | `{label: string, icon?: identifier, subtitle?: string, active?: boolean, on_tap?: ActionDescriptor}`; no Node body, no stateful node; multi-view is prohibited |
 
 `stale_spec`, when supplied, MUST use the same variant as `spec`.
-`current_view` is valid only for a multi-view `app:*` spec. Any other
-combination MUST receive `1201 content-invalid`.
+`current_view` is valid only for a multi-view `app:*` spec; a
+`notification:*`, `widget:*`, or `tile:*` spec MUST NOT carry `views`. Any
+other combination MUST receive `1201 content-invalid`.
+
+A `tile:*` spec describes a fixed host Quick-Settings slot, so it MUST NOT
+carry a Node, a `views` object, `current_view`, or a stateful node; a
+Companion MUST reject any of these with `1201 content-invalid`. `active`
+reports the slot's on/off state. `on_tap`, when present, enters the Section
+14 remote-action pipeline with no surface, dialog, or revision context; the
+Companion MUST inject the tile's `<name>` into a copy of `on_tap.args` as
+`tile`, and an authored conflicting member makes the spec invalid, parallel
+to Section 20.3 shortcuts.
 
 An app multi-view object is:
 
@@ -1243,10 +1254,12 @@ surface MUST erase every draft belonging to it.
 
 ### 13.7 Specialized surface metadata
 
-Section 13.4 defines the notification and widget wrappers. `header_action`, when
-present, is an ActionDescriptor. The Companion MUST NOT invent a default
-header action. A widget `empty` Node is rendered only when `body` contains no
-presentable content according to the widget profile.
+Section 13.4 defines the notification, widget, and tile wrappers.
+`header_action`, when present, is an ActionDescriptor. The Companion MUST NOT
+invent a default header action. A widget `empty` Node is rendered only when
+`body` contains no presentable content according to the widget profile. A tile
+spec carries neither `header_action` nor `empty`; those are notification and
+widget concepts.
 
 ## 14. Actions and input state
 
@@ -2185,7 +2198,14 @@ A `scaffold` node has no required members and MAY contain `top_bar`, `body`,
 `on_refresh: ActionDescriptor`.
 
 The Companion MUST dispatch a snackbar action only on a user tap, never on
-timeout. It MUST dispatch `on_refresh` only after a user refresh gesture. A
+timeout. The Companion presents `snackbar` when an accepted snapshot introduces
+a value that differs under Section 4.3 equality from the value in the previously
+accepted snapshot for that surface. An unchanged value MUST NOT re-present. An
+absent or empty `snackbar` dismisses any snackbar currently visible for that
+surface. A presented snackbar SHOULD remain visible for at least 4 seconds and
+MUST be dismissible by the user. `snackbar` carries no Section 16.1 presentation
+identity: it is not a node and retains no local state.
+It MUST dispatch `on_refresh` only after a user refresh gesture. A
 drawer or bar is structural content and MUST NOT acquire hidden navigation
 behavior not declared by its nodes.
 
@@ -3025,7 +3045,8 @@ unarmed (Section 21.8) and arms it when permission is restored. Permission grant
 state MUST NOT be a `1101 triggers-rejected` cause and MUST NOT fail the atomic
 replace-set. Acceptance MUST atomically replace
 the previous set for the pairing identity and return `{count}`, where `count`
-is a non-negative integer equal to the accepted array length. Rejection MUST
+is a non-negative integer equal to the accepted array length; it therefore also
+reflects any trigger Emacs omitted under Section 21.3. Rejection MUST
 use `1101 triggers-rejected`, MUST identify the failing trigger where safe, and
 MUST leave the prior set armed unchanged. An empty set clears all registrations.
 
@@ -3116,7 +3137,11 @@ predicate-only appears in `device.state_types`. A predicate-only type (Section
 21.7) is available in a gate whenever `triggers` or `state.get` is granted and
 never appears in `device.state_types`. If a non-predicate-only type is absent,
 Emacs MUST omit the entire trigger; it MUST NOT remove the unsupported predicate
-and install a weaker trigger.
+and install a weaker trigger. The omission is per trigger: the remaining entries
+of the same `triggers.set` are still sent, and the accepted `count` (Section
+21.1) reflects only those. Because that count is the sole wire evidence of the
+omission and no rule requires a caller to read it, Emacs MUST surface an omitted
+trigger to the application rather than drop it silently.
 
 The Companion MUST reject a malformed gate atomically. Evaluation MUST
 terminate and MUST perform no polling or unbounded work.
@@ -3453,6 +3478,25 @@ and response does not silently lose eligible intent. An action using `drop`
 MAY be delivered without persistence and is allowed to be lost if its request
 does not conclude.
 
+### 22.4 Feature registry
+
+A profile's `features` array (Section 10.2) advertises the *constraining
+features* the Companion honors on that target. A constraining feature gates a
+construct an ignoring receiver would over-accept, so Section 12's
+constraining-member rule applies: the sender omits the whole construct when the
+feature is absent.
+
+| Feature | Constrains | Sender rule when absent |
+|---|---|---|
+| `image.https` | an `image` whose `url` carries an `https:` scheme (Section 17.2) | omit the `image` node |
+| `image.data` | an `image` whose `url` carries a `data:image/*` scheme (Section 17.2) | omit the `image` node |
+| `toolbar.<identifier>` | an `editor.toolbar` naming a registered toolbar identifier (Section 17.7) | omit `toolbar`, or supply an inline ToolbarItem array |
+
+A feature name is a Section 4.4 identifier. A receiver MUST ignore an
+unrecognized `features` entry. A new constraining feature MUST be registered
+here, with its constrained construct and its sender rule, before any section
+relies on it, and MUST be projected into `contract.json`.
+
 ## 23. Security and privacy considerations
 
 ### 23.1 Trust boundary
@@ -3566,7 +3610,8 @@ A conforming EBP 2 Emacs endpoint MUST implement:
 - persistent monotonic per-surface revisions and absorption of Companion
   revision/tombstone floors;
 - input-state reconciliation;
-- explicit capability and per-target node, builtin, and feature gating;
+- explicit capability and per-target node, builtin, and feature gating
+  (Section 22.4);
 - the semantic-action allowlist, argument validation, revision validation,
   durable event-ID retention, and permanent event results;
 - safe surface and event retry behavior; and
