@@ -465,8 +465,14 @@ accepts connections and faces Section 24.6's adversarial vectors. For the
 Emacs endpoint they are RECOMMENDED: Emacs dials only its authenticated
 Companion and MAY delegate framing and message decoding to a host-platform
 JSON-RPC library — such as core Emacs `jsonrpc.el` — accepting that
-library's tolerances. No sender obligation in Section 6.1 is relaxed by this
-paragraph.
+library's tolerances. No sender obligation in this document is relaxed by
+this paragraph. A role excused by this paragraph from a strictness
+obligation still owes a bounded terminal reaction: it MUST NOT accept the
+message as valid, and it MUST reach close, discard, or a documented
+tolerance within Section 22.3's bounds; an unbounded stall is not a
+conforming alternative. This paragraph does not relax any obligation of
+Section 23, and in particular does not extend to a host library's
+diagnostics or to resources it allocates before validation.
 
 ## 7. JSON-RPC 2.0 conventions
 
