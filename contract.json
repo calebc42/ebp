@@ -599,7 +599,8 @@
     "badge": "string-or-number",
     "marks": "date-marks-object",
     "aligns": "align-array",
-    "time": "string"
+    "time": "string",
+    "fg": "color"
   },
   "enums": {
     "text.style": [
@@ -1958,11 +1959,27 @@
       ],
       "node_body": false,
       "multi_view": false
+    },
+    "app": {
+      "required": [],
+      "optional": [
+        "views",
+        "initial_view"
+      ],
+      "node_body": true,
+      "multi_view": true
     }
   },
   "image_data_encoding": {
     "alphabet": "rfc4648-standard",
     "padding": "required",
     "whitespace": "forbidden"
-  }
+  },
+  "syntax_style": [
+    "fg",
+    "bg",
+    "font_weight",
+    "italic",
+    "underline"
+  ]
 }

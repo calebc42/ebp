@@ -314,6 +314,26 @@ def check_params(method: str, params, path: str):
     for key in params:
         if key not in required and key not in optional:
             problem(f"{path}: unknown params key `{key}` on {method}")
+    # Amendment #127: the theme payload was the only wire-rich member no
+    # rail pinned — mechanically why the `meta` role drift survived three
+    # rungs.  Every colors key must be a theme_role, every syntax key a
+    # syntax_role, and every SyntaxStyle member a syntax_style member.
+    if method == "theme.set":
+        colors = params.get("colors")
+        if isinstance(colors, dict):
+            for k in colors:
+                if k not in contract["theme_roles"]:
+                    problem(f"{path}: colors key `{k}` is not a theme_role")
+        syntax = params.get("syntax")
+        if isinstance(syntax, dict):
+            for role, style in syntax.items():
+                if role not in contract["syntax_roles"]:
+                    problem(f"{path}: syntax key `{role}` is not a syntax_role")
+                if isinstance(style, dict):
+                    for m in style:
+                        if m not in contract["syntax_style"]:
+                            problem(f"{path}: SyntaxStyle member `{m}` "
+                                    f"on `{role}` is unregistered")
     # Structured members ride the node/action validators.
     if method in ("surface.update", "dialog.show"):
         spec = params.get("spec")
