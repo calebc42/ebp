@@ -2520,8 +2520,9 @@ be de-indented to column 0 and is instead unchanged; a line already at minimum
 depth is unchanged. `demote` raises it by one step: a line beginning with one or
 more `*` characters FOLLOWED BY A SPACE gains one leading `*`; otherwise a line
 whose first non-space character opens an unordered (`-`, `+`, or `*`) or ordered
-(`N.` or `N)`) list item gains two leading spaces; any other line whose first
-character is a space gains two leading spaces; any other line is unchanged.
+(`N.` or `N)`) list item — in each case the marker FOLLOWED BY A SPACE — gains
+two leading spaces; any other line whose first character is a space gains two
+leading spaces; any other line is unchanged.
 Within one line these two operations MUST be inverse: applying `demote` then
 `promote`, or `promote` then `demote`, MUST restore the exact original text
 whenever the first of the pair changed it.
@@ -2531,7 +2532,9 @@ whenever the first of the pair changed it.
 > common outline text a `*` at column 0 followed by a space denotes a heading
 > while the same character indented denotes a list bullet. Without them
 > `promote` manufactures a heading out of an indented bullet that `demote`
-> cannot undo, and a single-star line such as `*bold* text` is corrupted. `move-up` exchanges the
+> cannot undo, and a single-star line such as `*bold* text` is corrupted.
+
+`move-up` exchanges the
 cursor's line with the line above it, keeping the cursor at the same column of
 that line, and MUST be a no-op on the first line; `move-down` exchanges it with
 the line below under the same rule and MUST be a no-op on the last line. An
