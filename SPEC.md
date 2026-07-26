@@ -687,6 +687,14 @@ concurrently.
 
 TCP byte ordering does not by itself satisfy these application-order rules.
 
+A send is not atomic with respect to the sender's own state. A transport
+handoff MAY block, and an endpoint MAY process inbound messages while one of
+its own sends is in progress — on some hosts that inbound processing is what
+allows the peer to drain and the send to complete. The ordering rules above
+govern messages on the wire, not the sender's call stack: an endpoint MUST NOT
+assume that its own send has concluded before inbound dispatch runs, and state
+a send has already claimed remains claimed while that send is in progress.
+
 ### 7.5 Cancellation
 
 After authentication, either endpoint MAY send `rpc.cancel` for an outstanding
@@ -3833,6 +3841,14 @@ EBP has three load-management classes:
    reordered. `event.action` MUST NOT be conflated except by the explicit
    durable-queue `dedupe` rule before delivery.
 
+For every class, the boundary between an unsent and a transmitted message is
+the handoff to the transport, because on a real host the handoff is the
+irrevocable moment: bytes MAY sit indefinitely in transport buffers — *in
+transmission* — after the sending call has begun and before the peer receives
+them. A sender MAY conflate only messages it has not yet handed to the
+transport. A message in transmission is already transmitted for every rule in
+this section, even when the sending call has not returned.
+
 A receiver MUST NOT claim to discard an obsolete frame “without parsing” when
 the conflation key exists only inside that frame. It MAY discard an already
 parsed, queued operation after safely identifying its class and key.
@@ -3840,8 +3856,11 @@ parsed, queued operation after safely identifying its class and key.
 ### 22.3 Bounded processing
 
 Every endpoint MUST bound its inbound frame queue, parsed-message queue,
-outstanding request count, and module-specific work queues. It MUST apply
-transport backpressure before unbounded memory growth.
+outstanding request count, re-entrant dispatch depth, and module-specific work
+queues. It MUST apply transport backpressure before unbounded memory growth.
+These obligations are not relaxed by Section 6.2: a queue inside a delegated
+transport or dispatch library is the endpoint's own queue, and its growth is
+the endpoint's own growth.
 
 When authenticated processing capacity is exhausted and the endpoint cannot
 apply a method's defined safe conflation or retry behavior, it SHOULD send:
