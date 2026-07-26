@@ -512,7 +512,15 @@ def decode_stream(chunks):
             msg = json.loads(text, object_pairs_hook=reject_duplicates)
         except FrameError:
             raise
-        except json.JSONDecodeError:
+        # `ValueError`, not `json.JSONDecodeError`: the latter is a SUBCLASS of
+        # the former, so catching it does NOT catch a bare `ValueError` — and
+        # CPython raises exactly that for an integer literal longer than
+        # `sys.get_int_max_str_digits()` (4300 by default).  SPEC 4.5 places no
+        # bound on a literal's digit count, so such a body sits well inside
+        # `max_frame_bytes`, and SPEC 4.2 requires rejecting it as a Parse
+        # Error.  Before this the reference validator crashed instead, which is
+        # not a conforming outcome.  See docs/RESEARCH-A8-2026-07-25.md.
+        except ValueError:
             raise FrameError("parse-error")
         if not isinstance(msg, dict):
             raise FrameError("invalid-request")
@@ -658,6 +666,43 @@ def check_walk_completeness():
                 "the over-depth subtree beneath it went unreported")
 
 
+# ------------------------------------------------- decode rejection self-test
+def check_decode_rejections():
+    """A body this data model cannot carry must REJECT, never crash (SPEC 4.2).
+
+    The reference decoder is the thing other implementations are checked
+    against, so a crash here is not merely a bug in a tool: it is the
+    reference failing to demonstrate the behaviour it certifies.  The
+    long-integer-literal case is the one that got through — SPEC 4.5 bounds
+    the body, the nesting depth, identifiers and method names, but places no
+    bound on a single literal's digit count, so a five-thousand-digit integer
+    is a perfectly legal-sized frame that CPython refuses to convert.
+    """
+    def framed(body: bytes) -> bytes:
+        return b"Content-Length: %d\r\n\r\n%s" % (len(body), body)
+
+    cases = [
+        ("long integer literal",
+         b'{"jsonrpc":"2.0","method":"probe","params":{"n":' + b"9" * 5000
+         + b"}}"),
+        ("long negative integer literal",
+         b'{"jsonrpc":"2.0","method":"probe","params":{"n":-' + b"9" * 5000
+         + b"}}"),
+        ("malformed body",
+         b'{"jsonrpc":"2.0","method":'),
+    ]
+    for label, body in cases:
+        try:
+            list(decode_stream([framed(body)]))
+        except FrameError:
+            continue
+        except Exception as exc:                      # noqa: BLE001
+            problem(f"decode-selftest: {label} raised "
+                    f"{type(exc).__name__} instead of FrameError")
+            continue
+        problem(f"decode-selftest: {label} was accepted, not rejected")
+
+
 # ------------------------------------------------------------------- main ---
 def main() -> int:
     check_contract()
@@ -665,6 +710,7 @@ def main() -> int:
     check_hmac_kat()
     check_walk_completeness()
     check_equality_semantics()
+    check_decode_rejections()
 
     frames = 0
     for n, line in enumerate(golden_lines("frames.golden")):
