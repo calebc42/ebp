@@ -2150,6 +2150,22 @@ provided it applies the same media-type, byte-count, and pixel limits after
 decoding; this tolerance is OPTIONAL and a sender MUST NOT rely on it. The same
 no-whitespace rule applies to the `icon_png` payload of Section 20.3.
 
+The payload's conformance to that encoding — its alphabet, its padding, and the
+absence of whitespace — is part of the URI form, so a Companion MUST reject a
+document containing a non-conforming payload as content-invalid when it
+validates the document, on the same terms as an unadvertised URI form above. It
+MUST NOT accept such a document and report the failure only at load time. The
+decoded byte count and the pixel limits are load-time concerns and MAY instead
+produce the placeholder of Section 17.2's failure rule.
+
+> Informative: the distinction is which endpoint learns of the failure and when.
+> A malformed payload admitted at `surface.update` is answered `applied`, and
+> Section 13.1's revision floor then advances past a document that can never
+> render — Emacs has been told the surface is live, has no error to bind to the
+> node, and the user sees a blank frame. The encoding is checkable by scanning
+> the payload, with no decode and no allocation, so nothing is gained by
+> deferring it.
+
 > Informative: several host base64 encoders wrap their output at a fixed column
 > by default and require an explicit argument to suppress it — Emacs's
 > `base64-encode-string` line-breaks at 76 columns unless its optional

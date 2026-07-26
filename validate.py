@@ -189,20 +189,26 @@ def check_node(value, path: str, depth: int = 0):
             return
         t = value["t"]
         if t not in NODE_TYPES:
+            # An unknown type costs us THIS node's schema check and nothing
+            # more: its children are still nodes and still spend the same
+            # document depth. Returning here truncated the walk, so a single
+            # unrecognized `t` hid every over-depth node, malformed action,
+            # and unknown key underneath it — the validator reported one
+            # problem and implicitly called the rest of the subtree clean.
             problem(f"{path}: unknown node type `{t}`")
-            return
-        row = NODE_SCHEMA[t]
-        required, optional = set(row["required"]), set(row["optional"])
-        for req in required:
-            if req not in value:
-                problem(f"{path}: {t} missing required `{req}`")
-        for key in value:
-            if key != "t" and key not in required and key not in optional \
-                    and key not in UNIVERSAL:
-                problem(f"{path}: unknown key `{key}` on {t}")
-        if t == "text_input" and value.get("single_line") \
-                and "\n" in value.get("value", ""):
-            problem(f"{path}: single_line value contains U+000A (SPEC 17.4)")
+        else:
+            row = NODE_SCHEMA[t]
+            required, optional = set(row["required"]), set(row["optional"])
+            for req in required:
+                if req not in value:
+                    problem(f"{path}: {t} missing required `{req}`")
+            for key in value:
+                if key != "t" and key not in required and key not in optional \
+                        and key not in UNIVERSAL:
+                    problem(f"{path}: unknown key `{key}` on {t}")
+            if t == "text_input" and value.get("single_line") \
+                    and "\n" in value.get("value", ""):
+                problem(f"{path}: single_line value contains U+000A (SPEC 17.4)")
     for key, child in value.items():
         if (key in HOOK_KEYS or key == "on_trigger") \
                 and isinstance(child, dict):
@@ -494,11 +500,42 @@ def check_hmac_kat():
         problem(f"hmac-kat: server_proof mismatch: {server}")
 
 
+# ------------------------------------------------------------ walk self-test
+def check_walk_completeness():
+    """The node walk must survive an unrecognized `t`.
+
+    A validator that stops descending at the first thing it does not
+    recognize reports one problem and leaves the reader believing the rest
+    of the subtree was checked. Exercised here rather than in a golden,
+    because a golden is by construction a document that validates.
+    """
+    deep = {"t": "text", "text": "x"}
+    for _ in range(MAX_NODE_DEPTH + 2):
+        deep = {"t": "column", "children": [deep]}
+    doc = {"t": "no_such_type", "children": [deep]}
+
+    saved, found = problems[:], None
+    del problems[:]
+    try:
+        check_node(doc, "walk-selftest")
+        found = problems[:]
+    finally:
+        del problems[:]
+        problems.extend(saved)
+
+    if not any("unknown node type" in p for p in found):
+        problem("walk-selftest: an unknown node type went unreported")
+    if not any("node-depth" in p for p in found):
+        problem("walk-selftest: the walk stopped at the unknown node type — "
+                "the over-depth subtree beneath it went unreported")
+
+
 # ------------------------------------------------------------------- main ---
 def main() -> int:
     check_contract()
     check_spec_sync()
     check_hmac_kat()
+    check_walk_completeness()
 
     frames = 0
     for n, line in enumerate(golden_lines("frames.golden")):
