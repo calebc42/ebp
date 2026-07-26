@@ -70,3 +70,6 @@
 69 {"builtin":"dialog.submit","value":"ok"}
 70 {"builtin":"dialog.submit","capture_fields":["name"]}
 71 {"builtin":"dialog.dismiss"}
+72 {"id":"zoom_eq","on_change":{"action":"zoom.set"},"t":"slider","value":2.0,"values":[1,2,4]}
+73 {"id":"level_eq","on_change":{"action":"level.set"},"options":[{"label":"One","value":1},{"label":"Two","value":2}],"t":"enum_list","value":2.0}
+74 {"id":"bias_eq","on_change":{"action":"bias.set"},"t":"slider","value":-0.0,"values":[-1,0,1]}

@@ -171,6 +171,85 @@ def check_action(obj: dict, path: str):
 MAX_NODE_DEPTH = contract["limits"]["fixed"]["max_node_depth"]
 
 
+# ------------------------------------------------------ SPEC 4.3 equality ---
+_ABSENT = object()
+
+
+def spec_equal(a, b) -> bool:
+    """SPEC 4.3 equality: by VALUE, not by spelling or representation.
+
+    `1`, `1.0`, and `1e0` are one value; `-0` equals `0`; object member order
+    is irrelevant. The type tag gates first, because a host primitive
+    generally does not: Python's `==` equates `True` and `1` (bool subclasses
+    int), Emacs's `equal` separates `1` and `1.0`, and neither is §4.3.
+    """
+    if a is _ABSENT or b is _ABSENT:
+        return a is _ABSENT and b is _ABSENT
+    if a is None or b is None:          # JSON null
+        return a is None and b is None
+    if isinstance(a, bool) or isinstance(b, bool):
+        return isinstance(a, bool) and isinstance(b, bool) and a is b
+    if isinstance(a, str) or isinstance(b, str):
+        return isinstance(a, str) and isinstance(b, str) and a == b
+    if isinstance(a, (int, float)) or isinstance(b, (int, float)):
+        return (isinstance(a, (int, float)) and isinstance(b, (int, float))
+                and float(a) == float(b))
+    if isinstance(a, dict) or isinstance(b, dict):
+        return (isinstance(a, dict) and isinstance(b, dict)
+                and a.keys() == b.keys()
+                and all(spec_equal(a[k], b[k]) for k in a))
+    if isinstance(a, list) or isinstance(b, list):
+        return (isinstance(a, list) and isinstance(b, list)
+                and len(a) == len(b)
+                and all(spec_equal(x, y) for x, y in zip(a, b)))
+    return False  # not a SPEC 4.2 value kind
+
+
+def check_enum_options(node, path: str):
+    """SPEC 17.4: option values are distinct, and a selection names one.
+
+    Both tests are SPEC 4.3 comparisons, so `1` and `1.0` are the SAME option
+    (a duplicate) and a `value` of `2.0` selects the option authored `2`.
+    """
+    options = node.get("options")
+    if not isinstance(options, list):
+        problem(f"{path}.options: must be an array")
+        return
+    seen = []
+    for i, opt in enumerate(options):
+        if not isinstance(opt, dict) or "label" not in opt or "value" not in opt:
+            problem(f"{path}.options[{i}]: needs label and value")
+            continue
+        if any(spec_equal(s, opt["value"]) for s in seen):
+            problem(f"{path}.options[{i}]: duplicate option value (SPEC 4.3)")
+        seen.append(opt["value"])
+    if "value" not in node or node.get("allow_add"):
+        return
+    chosen = node["value"]
+    members = chosen if node.get("multi_select") else [chosen]
+    if not isinstance(members, list):
+        problem(f"{path}.value: multi-select value must be an array")
+        return
+    for i, v in enumerate(members):
+        if not any(spec_equal(s, v) for s in seen):
+            problem(f"{path}.value[{i}]: selected value not in options")
+
+
+def check_slider_values(node, path: str):
+    """SPEC 17.4: a discrete slider's value equals one LISTED number under
+    SPEC 4.3 — so `2.0` is the listed `2`, and `-0.0` is the listed `0`."""
+    values = node.get("values")
+    if values is None:
+        return
+    if not isinstance(values, list) or len(values) < 2:
+        problem(f"{path}.values: at least two discrete values")
+        return
+    if "min" in node or "max" in node:
+        problem(f"{path}: discrete slider must omit min and max")
+    if "value" in node and not any(spec_equal(v, node["value"]) for v in values):
+        problem(f"{path}.value: must equal a listed discrete value (SPEC 4.3)")
+
+
 def check_node(value, path: str, depth: int = 0):
     if isinstance(value, list):
         for i, child in enumerate(value):
@@ -209,6 +288,10 @@ def check_node(value, path: str, depth: int = 0):
             if t == "text_input" and value.get("single_line") \
                     and "\n" in value.get("value", ""):
                 problem(f"{path}: single_line value contains U+000A (SPEC 17.4)")
+            if t == "enum_list":
+                check_enum_options(value, path)
+            if t == "slider":
+                check_slider_values(value, path)
     for key, child in value.items():
         if (key in HOOK_KEYS or key == "on_trigger") \
                 and isinstance(child, dict):
@@ -449,6 +532,26 @@ def check_wire():
     n = 0
     for fx in manifest["fixtures"]:
         n += 1
+        # SPEC 24.5: a Golden identifies the role or roles for which its
+        # expectation is normative; absent, it applies to both. §6.2 scopes
+        # several receiver duties by role, so a negative expectation can be
+        # unproducible by a conforming endpoint in the other role — but the
+        # COMPANION is never excused (§24.1 grants it no delegation), so a
+        # roles list that omits it would be describing a different protocol.
+        roles = fx.get("roles")
+        if roles is not None:
+            if fx["kind"] != "negative":
+                problem(f"wire {fx['file']}: `roles` scopes a negative "
+                        f"expectation; this fixture is {fx['kind']}")
+            if not isinstance(roles, list) or not roles or \
+                    any(r not in ("companion", "emacs") for r in roles):
+                problem(f"wire {fx['file']}: `roles` must be a non-empty "
+                        f"list drawn from companion/emacs")
+            elif "companion" not in roles:
+                problem(f"wire {fx['file']}: the Companion role is never "
+                        f"excused from a receiver duty (SPEC 24.1)")
+        # This reference implements the strict receiver for BOTH roles, so it
+        # is held to every expectation regardless of scoping.
         data = (WIRE / fx["file"]).read_bytes()
         for label, chunks in chunkings(data):
             try:
@@ -500,6 +603,31 @@ def check_hmac_kat():
         problem(f"hmac-kat: server_proof mismatch: {server}")
 
 
+# -------------------------------------------------------- equality self-test
+def check_equality_semantics():
+    """SPEC 4.3, stated as vectors (SPEC 24.6 item 15).
+
+    Every host primitive within reach gets at least one of these wrong, so a
+    reference that delegated to `==` would pass its own goldens while an
+    endpoint built the same way silently erased a user's draft.
+    """
+    cases = [
+        (True, 1, 1.0), (True, 1, 1e0), (True, -0.0, 0), (True, 0.0, -0),
+        (True, {"a": 1, "b": 2}, {"b": 2, "a": 1}),
+        (True, [1, 2.0], [1.0, 2]),
+        # Python's `==` says True for the next two (bool subclasses int).
+        (False, True, 1), (False, False, 0),
+        # Emacs's `equal` says nil for `1` vs `1.0`; both must be one value.
+        (False, 1, "1"), (False, "1", 1),
+        (False, None, _ABSENT), (False, _ABSENT, None),
+        (False, [1, 2], [2, 1]), (False, {"a": 1}, {"a": 1, "b": 2}),
+    ]
+    for want, a, b in cases:
+        if spec_equal(a, b) is not want:
+            problem(f"equality-selftest: spec_equal({a!r}, {b!r}) "
+                    f"should be {want}")
+
+
 # ------------------------------------------------------------ walk self-test
 def check_walk_completeness():
     """The node walk must survive an unrecognized `t`.
@@ -536,6 +664,7 @@ def main() -> int:
     check_spec_sync()
     check_hmac_kat()
     check_walk_completeness()
+    check_equality_semantics()
 
     frames = 0
     for n, line in enumerate(golden_lines("frames.golden")):

@@ -125,7 +125,7 @@
             "surface": "app:main",
             "revision_seen": 42,
             "id": "title",
-            "value": "caf\u00e9 \u2615 \u2014 na\u00efve"
+            "value": "café ☕ — naïve"
           }
         }
       ]
@@ -155,6 +155,9 @@
       "file": "11-missing-length.bin",
       "profile": "android-loopback-tcp",
       "kind": "negative",
+      "roles": [
+        "companion"
+      ],
       "rule": "6.2: header section without Content-Length closes the connection",
       "expect_error": "close"
     },
@@ -162,6 +165,9 @@
       "file": "12-duplicate-length.bin",
       "profile": "android-loopback-tcp",
       "kind": "negative",
+      "roles": [
+        "companion"
+      ],
       "rule": "6.2/24.6 item 3: more than one Content-Length closes the connection",
       "expect_error": "close"
     },
@@ -176,6 +182,9 @@
       "file": "14-signed-length.bin",
       "profile": "android-loopback-tcp",
       "kind": "negative",
+      "roles": [
+        "companion"
+      ],
       "rule": "6.2: signed Content-Length closes the connection",
       "expect_error": "close"
     },
@@ -190,6 +199,9 @@
       "file": "16-invalid-utf8.bin",
       "profile": "android-loopback-tcp",
       "kind": "negative",
+      "roles": [
+        "companion"
+      ],
       "rule": "6.2/24.6 item 3: invalid UTF-8 body is a JSON-RPC Parse Error",
       "expect_error": "parse-error"
     },
@@ -197,6 +209,9 @@
       "file": "17-invalid-json.bin",
       "profile": "android-loopback-tcp",
       "kind": "negative",
+      "roles": [
+        "companion"
+      ],
       "rule": "6.2/24.6 item 3: invalid JSON body is a JSON-RPC Parse Error",
       "expect_error": "parse-error"
     },
@@ -204,6 +219,9 @@
       "file": "18-batch-array.bin",
       "profile": "android-loopback-tcp",
       "kind": "negative",
+      "roles": [
+        "companion"
+      ],
       "rule": "6.2/24.6 item 3: top-level arrays (JSON-RPC batches) are prohibited",
       "expect_error": "invalid-request"
     },
@@ -211,6 +229,9 @@
       "file": "19-duplicate-members.bin",
       "profile": "android-loopback-tcp",
       "kind": "negative",
+      "roles": [
+        "companion"
+      ],
       "rule": "4.1/24.6 item 3: duplicate member names are rejected",
       "expect_error": "invalid-request"
     },
@@ -225,6 +246,9 @@
       "file": "21-deep-nesting.bin",
       "profile": "android-loopback-tcp",
       "kind": "negative",
+      "roles": [
+        "companion"
+      ],
       "rule": "4.5/6.2/24.6 item 3: a body nesting JSON containers past 64 is rejected as a JSON-RPC Parse Error before parsing",
       "expect_error": "parse-error"
     },

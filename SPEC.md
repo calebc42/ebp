@@ -176,6 +176,14 @@ Where this specification compares JSON values, equality is structural:
   independent of member order; and
 - `null` equals only `null`.
 
+> Informative: this is by value, not by spelling, and almost no host runtime's
+> structural-equality primitive matches it — they are commonly
+> representation-sensitive for numbers, order-sensitive for decoded objects, or
+> conflate a boolean with an integer. An implementation generally needs a
+> purpose-built comparator rather than the language's own, and the type tag has
+> to gate before the value does. Section 24.6 requires a vector for this,
+> because a suite built from same-spelling operands cannot tell the two apart.
+
 ### 4.4 Identifiers
 
 Unless a narrower grammar is stated, an EBP identifier MUST:
@@ -3205,6 +3213,25 @@ The complete device report's canonical size under Section 4.5 MUST NOT exceed
 that bound MUST advertise a bounded subset that fits; it MUST NOT emit a device
 report that depends on truncation.
 
+Every identifier appearing in a `trigger_unavailable` array MUST also appear as
+a key of `permissions` with the value `false` at the time the welcome is sent; a
+Companion MUST NOT report a blocking identifier absent from the snapshot. A
+Companion MUST use the same identifier for the same platform grant in every
+welcome it sends for a pairing identity, across sessions and across Companion
+upgrades, and SHOULD use the same identifier in `data.permission` on
+`1002 cap-permission` (Section 8). This document projects no permission
+vocabulary: the identifiers are opaque (Section 4.4) and belong to the host
+platform, so the requirement is that the three places an endpoint meets one
+agree, not that any particular spelling be used.
+
+> Informative: because the identifiers are opaque, the Companion owns the
+> user-facing remediation path. `trigger_unavailable` is the only channel that
+> tells Emacs a supported trigger cannot arm, and it is useful only if the
+> identifier can be joined to the snapshot that says what is missing and to the
+> refusal that says which grant failed. An Emacs endpoint offering a
+> remediation affordance SHOULD invoke `settings.open` rather than render an
+> identifier as a user-visible permission name.
+
 The Companion MUST re-check authorization at invocation or trigger-arm time. A
 stale permission snapshot may produce a typed refusal but MUST NOT permit an
 unauthorized operation.
@@ -3608,6 +3635,21 @@ or calendar boundary. This rule does not suppress a new external occurrence
 for `package`, `sms.received`, or the explicit time, boot, time-zone, and manual
 sources.
 
+Durability under `policy: "queue"` and `policy: "wake"` applies to occurrences
+the Companion observed and admitted under Section 21.2; it does not guarantee
+that every platform transition, threshold crossing, or calendar boundary is
+observed. A transition that occurs while the Companion is not executing is not
+observed, and re-establishing the baseline at restore absorbs it. A Companion
+MUST NOT present a transition-driven trigger type as a complete event log.
+
+> Informative: on platforms that treat application processes as disposable, with
+> vendor-specific background-execution restrictions on top, the observation gap
+> can span hours. This is the one place where the durable queue's guarantee
+> stops: Section 15's ordering and retention cover an event from admission
+> onward, and say nothing about whether the occurrence was ever seen. `time`,
+> whose missed intervals are coalesced below, and `state.get` sampling are the
+> completeness-preserving alternatives.
+
 The `screen` states are mutually exclusive: `off` means the display is not
 interactive, `on` means it is interactive while keyguard is locked, and
 `unlocked` means it is interactive with keyguard unlocked. A relock while the
@@ -3880,8 +3922,19 @@ An implementation MUST NOT:
 - execute text obtained from QR, NFC, clipboard, notification, editor, or
   sensor input without a separate explicit trust decision;
 - pass unvalidated action or command names to an ambient command dispatcher;
+- use a received string as a format, template, query, or pattern that the host
+  interprets — a printf-style or equivalent format string, a log or message
+  template, a database query, or a regular expression — rather than passing it
+  as an inert argument to such a construct;
 - treat an EBP string as a shell command; or
 - deserialize arbitrary platform objects from JSON.
+
+> Informative: the interpretation bullet is the one an implementation reaches
+> for by accident, because Section 7.3 asks it to log an unknown method name
+> and invalid params. On some hosts a format primitive signals on a stray `%`
+> and honours an arbitrary field width, and a notification dispatcher may run
+> with no error barrier around it, so such a signal escapes message dispatch
+> entirely. The received text belongs in an argument, never in the template.
 
 A barcode, QR code, or NFC tag MAY be reported as plain action data. Automatic
 execution of its contents is outside EBP and MUST require an explicit,
@@ -4069,8 +4122,17 @@ Each Golden MUST identify:
 - its transport profile;
 - whether it is a positive or negative vector;
 - the messages expected after decoding, or the expected transport/protocol
-  error; and
+  error;
+- the receiver role or roles for which that expectation is normative; and
 - the normative rule it witnesses.
+
+A negative Golden asserts one outcome, but Section 6.2 scopes several receiver
+duties by role, so an expectation that is normative for one role can be
+unproducible by a conforming endpoint in the other. Absent an explicit role
+list, an expectation applies to both roles. Where a Golden's expectation does
+not apply to a role, a suite MUST still assert that role's bounded terminal
+reaction — that the stream is left synchronized or closed, and that the frame
+produced no application effect — rather than skipping the vector.
 
 A decoder conformance test MUST feed the Golden bytes in varied transport-read
 chunk sizes, including one octet at a time and multiple frames in one read. An
@@ -4081,7 +4143,12 @@ a separate normative rule.
 
 ### 24.6 Required adversarial tests
 
-A core conformance suite MUST include at least:
+A core conformance suite MUST include at least the following. Each item is
+required of both roles, but where Section 6.2's receiver strictness is scoped
+per role (Sections 24.1 and 24.2 each restate that scoping for their role), the
+expected outcome is the one that section leaves normative for the role under
+test — subject in every case to the bounded terminal reaction Section 24.5
+requires of an excused role.
 
 1. a non-ASCII UTF-8 body whose `Content-Length` differs from its character
    count;
@@ -4106,8 +4173,13 @@ A core conformance suite MUST include at least:
 12. password-state and authentication-proof exclusion from persistence, logs,
     warnings, and any delegated host-library message trace;
 13. unknown node, field, enum, builtin, capability, trigger, and predicate
-    behavior; and
-14. bounded overload behavior for each traffic class.
+    behavior;
+14. bounded overload behavior for each traffic class; and
+15. a Section 4.3 comparison whose operands spell an equal value differently —
+    `1` versus `1.0` versus `1e0`, `-0` versus `0`, and objects differing only
+    in member order — exercised through input-draft reconciliation
+    (Section 13.6), `state.changed` reconciliation (Section 14.6), and
+    enum-option distinctness and selection (Section 17.4).
 
 An optional-module suite MUST add failure and crash-boundary cases specific to
 that module.
