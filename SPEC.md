@@ -1058,7 +1058,7 @@ The welcome members have these schemas:
 | `server` | object containing exactly `name` and `version`, each a non-empty string of at most 128 UTF-8 octets |
 | `granted` | array of distinct capability identifiers |
 | `surface_profiles` | target-profile map defined below |
-| `surfaces` | object mapping Surface IDs to `{revision, present}`, where `revision` is a non-negative integer and `present` is boolean |
+| `surfaces` | object mapping Surface IDs to `{revision, present}`, where `revision` is a non-negative integer and `present` is boolean, plus `current_view` where Section 10.2 requires it |
 | `queued_events` | non-negative integer count of retained durable events for this pairing identity |
 | `input_state` | object mapping present Surface IDs to objects mapping stateful node IDs to their latest non-password JSON values |
 | `limits` | limits object defined in Section 4.5 |
@@ -1075,6 +1075,15 @@ field's newer draft to make room. Passwords MUST be absent. A surface tombstone 
 NOT have input state. `queued_events` MUST equal the count visible to the next
 `queue.replay`; it MUST NOT include expired records that the Companion has
 already identified for deletion.
+
+For a present surface in the `app` namespace whose latest accepted snapshot is
+multi-view, the `surfaces` entry MUST also carry `current_view`, naming the
+view the Companion is presently showing. Without it the navigation channel is
+write-only and lossy: `view.switched` is `when_offline: "drop"` (Section 14.2),
+so a local navigation performed while Emacs was disconnected is otherwise
+unrecoverable at the Section 10.3 barrier. Emacs MAY include `current_view` in
+an update naming the view the Companion already shows; such an update is a
+no-op for navigation.
 
 `wants` is the set of optional capabilities requested by Emacs. `granted` MUST
 be its intersection with the Companion's supported capability set. Unknown
@@ -1263,6 +1272,15 @@ select nodes, builtins, and features from the corresponding welcome
 required capability/profile was not granted; `surface.remove` remains legal for
 any surface reported in the welcome so stale persistent state can be retired.
 
+The `app` surface namespace is partitioned by owner. An implementation that
+hosts more than one independently distributed application MUST provide a
+reservation discipline for owner names, MUST document any prefix it reserves
+for itself, and MUST report a second, distinct claimant of an owner name as an
+error rather than silently replacing the first. Re-registration by the same
+claimant — as in interactive development — is not a second claimant. Because
+Section 13.5 persists snapshots keyed by Surface ID, an owner-name collision is
+a wire-visible data hazard rather than a local one.
+
 One surface is owned by the pairing identity and has one ordered history of
 snapshots and tombstones. Emacs MUST assign revisions monotonically per surface
 and MUST persist its next revision. Gaps are allowed. Revisions MUST NOT wrap.
@@ -1403,6 +1421,13 @@ view still exists. It MUST change views because of an update only when:
 
 Background refreshes SHOULD omit `current_view` so they do not take navigation
 away from the user.
+
+Those conditions presuppose consecutive multi-view snapshots. A surface MAY
+also leave the multi-view shape entirely — a degraded single-root spec, for
+instance — and return to it later. An accepted snapshot that carries no `views`
+clears any current view the Companion retained for that surface. The next
+accepted multi-view snapshot for that surface that omits `current_view`
+therefore selects `initial_view`.
 
 ### 13.5 Cached and stale presentation
 
@@ -1736,6 +1761,21 @@ SHOULD commit their effect and event ID transactionally when possible.
 EBP provides at-least-once delivery of eligible queued events and durable
 deduplication identifiers. It does not promise exactly-once external side
 effects across arbitrary crashes.
+
+A handler that signals rather than returning a status is answered `rejected`,
+which Section 14.5 makes permanent: the Companion MUST NOT re-present the
+occurrence. An implementation whose handlers may signal SHOULD therefore
+distinguish a genuine refusal from an incidental failure before answering, and
+SHOULD provide its handler authors a way to conclude an occurrence as
+retryable. A silent permanent rejection is the failure mode this rule exists to
+make visible, not to excuse.
+
+A password submission is a special case of that rule. Because Section 14.6
+forbids retaining or replaying a password value, a password-carrying occurrence
+MUST NOT be retried after any conclusion: its captured `fields` cannot be
+reconstructed from durable state, so a retry would deliver a different
+occurrence under the same `event_id`. An endpoint MUST conclude such an
+occurrence exactly once and MUST NOT place it on a retry path.
 
 ### 14.5 Revision validation
 
@@ -2653,6 +2693,11 @@ On selection, the Companion MUST inject `menu_id`, zero-based
 `category_index`, and, for a nested item, zero-based `item_index` into a copy of
 the descriptor's `args`. Any authored conflict makes the menu invalid.
 
+A Companion that discards a `pie_menu.show` because the menu is invalid MUST
+emit `log.error` with code `1201`, `data.kind: "content-invalid"`,
+`data.reason: "pie-menu-invalid"`, and `data.path` naming the offending member.
+A silent discard leaves an authoring error with no report on either side.
+
 `pie_menu.dismiss` params are `{menu_id}`. Showing a menu with an existing ID
 replaces it. Dismissing an unknown ID is a no-op.
 
@@ -2708,6 +2753,20 @@ The standard syntax roles are `comment`, `string`, `keyword`, `function`,
 `heading`, `link`, `todo`, `done`, and `tag`; unknown syntax roles MUST be
 ignored. These are projected into `contract.json` as `syntax_roles`, parallel
 to `theme_roles`.
+
+A Companion MUST NOT interpret one standard role as another. A Companion whose
+highlighter has no concept corresponding to a standard role MAY ignore that
+role; ignoring it does not license substituting a different role's style for
+it.
+
+The SyntaxStyle object is projected into `contract.json` as `syntax_style`,
+whose optional members are `fg`, `bg`, `font_weight`, `italic`, and
+`underline`. A conformance validator MUST check every member name of a
+`theme.set` `colors` object against `theme_roles`, every member name of its
+`syntax` object against `syntax_roles`, and every SyntaxStyle member against
+`syntax_style`. The golden corpus MUST contain at least one `theme.set` frame
+exercising the complete `theme_roles` set and at least three distinct syntax
+roles.
 
 Standard roles include `primary`, `on_primary`, `primary_container`,
 `on_primary_container`, parallel `secondary`, `tertiary`, and `error` roles,
@@ -2773,6 +2832,13 @@ unique reminder IDs. Each reminder is a closed object with this schema:
 | `body` | string | no | User-visible supporting text |
 | `at_ms` | timestamp | yes | Earliest presentation time |
 | `on_tap` | remote ActionDescriptor | no | Action dispatched for an explicit tap |
+
+A reminder's `on_tap` MUST NOT carry `capture_fields`. Section 14.1 makes
+`capture_fields` valid only inside a surface or dialog containing every named
+node, and a reminder is neither; Section 18.5 already carries the twin rule for
+notification actions. A `reminders.set` containing such a reminder is invalid:
+the Companion MUST reject the entire request with `1201 content-invalid` naming
+`on_tap.capture_fields`.
 
 The Companion MUST inject
 `owner` and `reminder_id` into a copy of `on_tap.args`; authored conflicting
@@ -3891,6 +3957,16 @@ peer never sent. A sender whose delivery mechanism is already single-flight —
 Section 15.3's replay pump is — is not bounded by this ceiling, because it
 cannot be the resource the ceiling protects.
 
+`1401 overloaded` MAY also be returned as a response `error.code` where a
+method's registry entry lists it — Section 18.1's `max_dialogs` refusal is the
+case in this document. A peer response and a local sender-ceiling refusal are
+therefore byte-identical on inspection, and only one of them means the peer
+declined anything. An endpoint MUST NOT conflate the two: a locally generated
+refusal MUST be distinguishable from a peer response by the code path that
+consumes it. On receiving a `1401` response an endpoint MUST NOT resend the
+same request immediately; it MUST apply bounded backoff and MUST bound the
+number of consecutive resends.
+
 `log.error` params are `{code, message, data?}`. It is diagnostic and MUST NOT
 be treated as a response, acknowledgement, or authorization decision.
 
@@ -3900,6 +3976,15 @@ currently available. This ensures that connection loss between transmission
 and response does not silently lose eligible intent. An action using `drop`
 MAY be delivered without persistence and is allowed to be lost if its request
 does not conclude.
+
+Because that admission is required before every delivery attempt, including on
+an already-`READY` session, the Companion MUST include `queued_at_ms` in the
+params of every `queue` or `wake` delivery and MUST omit it for a `drop`
+delivery. Emacs MAY treat the presence of `queued_at_ms` as proof that the
+Companion holds a durable record for that occurrence. Without this
+discriminator a handler cannot tell an occurrence it may safely conclude
+asynchronously from one whose loss is silent, which Section 14.4 forbids it
+from guessing at.
 
 ### 22.4 Feature registry
 
@@ -3985,7 +4070,12 @@ bounded in size and lifetime.
 > `jsonrpc-event-hook` — unbounded, both directions, never trimmed — and
 > additionally routes undecodable frame bodies through `display-warning`.
 > Constructing the connection with `:events-buffer-config '(:size 0)` and
-> removing the hook satisfies this rule.
+> removing the hook addresses the events buffer ONLY. At 1.0.25
+> `jsonrpc--process-filter` reports a decode failure with
+> `(jsonrpc--warn "Invalid JSON: %s %s" … (buffer-string))`, and
+> `jsonrpc--warn` writes to `*Messages*` through `jsonrpc--message` before it
+> reaches `display-warning` — so the raw body survives both settings, and an
+> implementation that stops at the events buffer does not satisfy this rule.
 
 Persistent queues and input snapshots MUST use app-private storage. Where a
 platform provides keystore-backed encrypted storage, sensitive queued trigger
@@ -4193,12 +4283,14 @@ requires of an excused role.
     warnings, and any delegated host-library message trace;
 13. unknown node, field, enum, builtin, capability, trigger, and predicate
     behavior;
-14. bounded overload behavior for each traffic class; and
+14. bounded overload behavior for each traffic class;
 15. a Section 4.3 comparison whose operands spell an equal value differently —
     `1` versus `1.0` versus `1e0`, `-0` versus `0`, and objects differing only
     in member order — exercised through input-draft reconciliation
     (Section 13.6), `state.changed` reconciliation (Section 14.6), and
-    enum-option distinctness and selection (Section 17.4).
+    enum-option distinctness and selection (Section 17.4); and
+16. a peer-returned `1401` on a request the local sender ceiling did not
+    refuse, verified not to trigger unbounded local retry (Section 22.3).
 
 An optional-module suite MUST add failure and crash-boundary cases specific to
 that module.
