@@ -4023,13 +4023,20 @@ trigger data, and every other received value before use.
 An implementation MUST NOT:
 
 - evaluate an action name as Elisp or another language expression;
-- execute text obtained from QR, NFC, clipboard, notification, editor, or
-  sensor input without a separate explicit trust decision;
+- execute text obtained from QR, NFC, clipboard, notification, editor, dialog
+  field, platform share or intent, or sensor input without a separate explicit
+  trust decision;
 - pass unvalidated action or command names to an ambient command dispatcher;
 - use a received string as a format, template, query, or pattern that the host
   interprets — a printf-style or equivalent format string, a log or message
   template, a database query, or a regular expression — rather than passing it
-  as an inert argument to such a construct;
+  as an inert argument to such a construct. This prohibition is not lifted by
+  the interpretation being intentional: a receiver that deliberately exposes a
+  search, filter, or query grammar to the peer MUST still treat every string
+  the peer supplies within that grammar as an inert operand. Where such a
+  grammar admits a term whose argument the host would interpret as a pattern,
+  the receiver MUST quote that argument, or MUST evaluate it through a
+  cost-bounded matcher, before it reaches the host's engine;
 - treat an EBP string as a shell command; or
 - deserialize arbitrary platform objects from JSON.
 
@@ -4043,6 +4050,28 @@ An implementation MUST NOT:
 A barcode, QR code, or NFC tag MAY be reported as plain action data. Automatic
 execution of its contents is outside EBP and MUST require an explicit,
 separately specified user trust policy.
+
+Where an implementation relies on the separate explicit trust decision above to
+admit text that the host would otherwise interpret, that decision MUST be taken
+per invocation of the interpreting operation, MUST identify what will be
+interpreted and with what authority, and MUST default to declining. A standing
+configuration setting, a capability grant, the act of pairing, or the user
+having chosen this application as the destination of a platform share are each
+insufficient on their own: they establish that the user intended to send the
+text here, not that the user intended it to execute. An implementation MAY
+instead neutralize the text — quoting or escaping it so no interpretation
+occurs — in which case no trust decision is required, and this is the
+RECOMMENDED default where the interpreting capability is incidental to the
+feature.
+
+> Informative: the shape this rule exists for is a local template facility that
+> the user legitimately controls — an editor capture template, a snippet
+> expander — into which peer-supplied field values or shared text are
+> substituted before the template is expanded. The template is the user's own
+> configuration and is trusted; the substituted values arrived over the wire and
+> are not. Substituting first and expanding afterwards silently promotes the
+> value to the template's authority. Escaping the value costs nothing when the
+> feature's purpose is to carry text rather than behavior.
 
 ### 23.3 Sensitive values
 
@@ -4114,6 +4143,16 @@ the allocation occurs first. It applies to names the receiver is required to
 tolerate under Section 12 rule 1 and to names it rejects under Section 7.3.
 This obligation is not relaxed by Section 6.2: the cost is permanent and
 cross-session, not per-frame.
+
+A receiver's cost to *interpret* a message is bounded independently of Section
+4.5's limits on its size. Where a receiver evaluates peer-supplied structure —
+a filter or query grammar, a selector, a pattern, or any term the receiver
+walks or applies over its own data — it MUST bound the work that evaluation
+performs, and MUST NOT rely on the body, identifier, or nesting limits of
+Section 4.5 to do so. A body well inside every Section 4.5 limit may be cheap
+to decode and unbounded to interpret. Any table the receiver retains keyed by
+peer-supplied content, including a memo or cache of evaluation results, is
+subject to the bounding and reclamation obligation of the paragraph above.
 
 > Informative: Emacs `json-parse-string` interns member names for
 > `:object-type` `plist` and `alist` but not for `hash-table`; core
