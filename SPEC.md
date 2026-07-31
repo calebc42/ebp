@@ -1219,6 +1219,7 @@ means `READY`.
 | `session.superseded` | Companion | notification | S, R | core | 5.2 |
 | `surface.update` | Emacs | request | S, R | core / surface capability | 13 |
 | `surface.remove` | Emacs | request | S, R | core for reported surfaces | 13 |
+| `surface.release` | Emacs | request | R | core | 13.1 |
 | `queue.replay` | Emacs | request | S, R | core | 15 |
 | `event.action` | Companion | request | S, R | core | 14–15 |
 | `state.changed` | Companion | notification | R | core | 14 |
@@ -1321,7 +1322,9 @@ every distinct Surface ID with a retained snapshot or tombstone. A never-seen
 Surface ID has a conceptual revision floor of `-1`, so any first non-negative
 revision is newer. A Companion
 MUST retain each tombstone revision floor until pairing revocation and MUST NOT
-reclaim it merely to admit a reused or new ID. A floor also survives the
+reclaim it merely to admit a reused or new ID; the only reclamation is the
+explicit `surface.release` below, and a Companion MUST NOT reclaim a floor on
+any other trigger. A floor also survives the
 Companion's own inability to present the snapshot it belongs to. Where a
 Companion re-validates a retained snapshot — after a restart, or because its
 validator became stricter between versions — a snapshot it can no longer accept
@@ -1338,6 +1341,20 @@ count. In particular, reactivating a tombstone is invalid at `max_surfaces`,
 while updating a present snapshot or removing a known ID remains legal. Emacs
 SHOULD use stable names and MUST NOT churn Surface IDs as a substitute for
 revisions.
+
+`surface.release` (Emacs sender, request, `READY` only) retires a tombstoned
+surface's history: params carry one member, `surface` (a Surface ID,
+required). If the ID names a tombstoned surface, the Companion MUST delete
+the tombstone and its revision floor in one durable step and return
+`{"released": true}`. If the ID names a *present* surface, the request is
+invalid — `1201 content-invalid` — releasing is deliberate and two-step:
+remove first, then release. If the ID matches no retained history, the
+Companion MUST return `{"released": false}` — a benign idempotency result,
+so a repeat after an ambiguous close is harmless. By releasing, Emacs
+asserts it has no outstanding update for that ID: a later reuse starts a new
+history at the conceptual floor of `-1`, and the Section 24.6 item 7 race is
+Emacs's to avoid for exactly that ID. Release is the only floor reclamation;
+everything not explicitly released keeps the retention rules above.
 
 ### 13.2 `surface.update`
 
@@ -1947,8 +1964,17 @@ reject admission with a visible diagnostic equivalent to `1601 queue-full`.
 An event expires when the effective wall-clock time is greater than or equal to
 `occurred_at_ms + ttl_s*1000`. The effective wall clock is the greater of the
 current wall clock and a durably stored per-pairing high-water mark. The
-Companion MUST advance that mark when time moves forward; clock rollback MUST
-NOT extend an event's lifetime. It MUST delete expired records before delivery
+Companion MUST advance that mark as time genuinely passes; clock rollback MUST
+NOT extend an event's lifetime. A forward wall-clock step beyond the monotonic
+time elapsed since the previous reading is a *claim*, not a fact: the
+Companion MUST NOT advance the mark past genuinely elapsed time until the
+stepped reading has persisted for 60 seconds of monotonic elapsed time, and
+MUST NOT let the stored mark lead the current wall clock by more than 604800
+seconds — on observing a lead beyond that bound it MUST clamp the mark to the
+current wall clock plus 604800 seconds. This is Section 21.2's throttle
+discipline applied to the queue's clock: wall-clock movement in either
+direction is never trusted beyond what monotonic elapsed time corroborates.
+The Companion MUST delete expired records before delivery
 and MUST count them in the next replay summary.
 
 A durable (`queue` or `wake`) event's `occurred_at_ms` and `queued_at_ms` MUST be

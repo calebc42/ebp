@@ -953,6 +953,29 @@
         1204
       ]
     },
+    "surface.release": {
+      "sender": "emacs",
+      "class": "request",
+      "states": [
+        "READY"
+      ],
+      "capability": "core",
+      "params": {
+        "required": [
+          "surface"
+        ],
+        "optional": []
+      },
+      "result": {
+        "required": [
+          "released"
+        ],
+        "optional": []
+      },
+      "errors": [
+        1201
+      ]
+    },
     "session.superseded": {
       "sender": "companion",
       "class": "notification",
