@@ -953,6 +953,19 @@
         1204
       ]
     },
+    "session.superseded": {
+      "sender": "companion",
+      "class": "notification",
+      "states": [
+        "SYNCING",
+        "READY"
+      ],
+      "capability": "core",
+      "params": {
+        "required": [],
+        "optional": []
+      }
+    },
     "surface.update": {
       "sender": "emacs",
       "class": "request",

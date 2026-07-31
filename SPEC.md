@@ -387,12 +387,21 @@ shown in the Companion's pairing UI.
 The `android-loopback-tcp` core profile permits exactly one paired Emacs
 authority and one authenticated authoritative session at a time. Creating a new
 pairing MUST first revoke the old pairing under Section 9.1. When a new session
-authenticates successfully, the Companion MUST terminate the older session
+authenticates successfully, the Companion MUST send `session.superseded`
+(Section 11) on the older session's transport, best-effort, and then MUST
+terminate the older session
 before the new session enters `SYNCING`. Before assembling the new session's
 welcome, the Companion MUST conclude every pending inbound request of the
 terminated session: each is either fully applied with its response committed to
 the old transport, or discarded without effect. A terminated session's request
-MUST NOT alter any state the new session's welcome reports. The Companion MUST continue to accept
+MUST NOT alter any state the new session's welcome reports. A pairing identity
+names one Emacs authority: concurrent processes sharing it contend for the
+single authoritative session, and a superseded endpoint MUST stand down rather
+than contend — an endpoint receiving `session.superseded` MUST NOT
+automatically redial for at least 60 seconds and SHOULD require explicit user
+intent where a user is present. Because the notification is best-effort, an
+endpoint MUST treat any transport close it did not initiate as possible
+supersession and apply jittered backoff to automatic redials. The Companion MUST continue to accept
 new loopback connections and allow each to attempt the Section 9 handshake while
 an authenticated session exists — supersession depends on it — and MUST bound the
 number of concurrent pre-authentication connections. A listener that refuses or
@@ -1197,6 +1206,7 @@ means `READY`.
 | `session.hello` | Emacs | request | `CONNECTED` | core | 9 |
 | `auth.response` | Emacs | request | `CHALLENGED` | core | 9 |
 | `session.ready` | Emacs | request | `SYNCING` | core | 10 |
+| `session.superseded` | Companion | notification | S, R | core | 5.2 |
 | `surface.update` | Emacs | request | S, R | core / surface capability | 13 |
 | `surface.remove` | Emacs | request | S, R | core for reported surfaces | 13 |
 | `queue.replay` | Emacs | request | S, R | core | 15 |
