@@ -297,7 +297,14 @@ header scan is bounded well below it.
 not include the JSON-RPC envelope or storage-engine overhead. An
 `event.action` sender MUST encode the fixed envelope outside `params` in no more
 than 256 UTF-8 octets. Together with the upper bound above, this guarantees that
-an allowed event also fits `max_frame_bytes`. `max_queued_bytes` is an internal
+an allowed event also fits `max_frame_bytes`. The capture dimensions carry no
+such guarantee: `max_capture_fields` × `max_field_bytes` may exceed
+`max_event_bytes` at the REQUIRED minimums. These are per-dimension caps, not a
+composed admission promise; the binding budget for an assembled
+`event.action.params` is `max_event_bytes`. A capture whose assembled params
+would exceed it MUST NOT create the event, MUST NOT truncate or drop individual
+captured values to fit, and MUST present a visible diagnostic, exactly as
+Section 15.1 requires when queue capacity is exhausted. `max_queued_bytes` is an internal
 durable capacity and MAY conservatively include payloads, indexes, transaction
 records, and storage overhead. `max_image_bytes`, `max_decoded_image_bytes`, and
 `max_image_pixels` apply per image. Unless a row states otherwise,
@@ -381,7 +388,11 @@ The `android-loopback-tcp` core profile permits exactly one paired Emacs
 authority and one authenticated authoritative session at a time. Creating a new
 pairing MUST first revoke the old pairing under Section 9.1. When a new session
 authenticates successfully, the Companion MUST terminate the older session
-before the new session enters `SYNCING`. The Companion MUST continue to accept
+before the new session enters `SYNCING`. Before assembling the new session's
+welcome, the Companion MUST conclude every pending inbound request of the
+terminated session: each is either fully applied with its response committed to
+the old transport, or discarded without effect. A terminated session's request
+MUST NOT alter any state the new session's welcome reports. The Companion MUST continue to accept
 new loopback connections and allow each to attempt the Section 9 handshake while
 an authenticated session exists — supersession depends on it — and MUST bound the
 number of concurrent pre-authentication connections. A listener that refuses or
@@ -1350,6 +1361,12 @@ A stale result is a benign idempotency result, not a JSON-RPC error. The result
 revision and `present` MUST describe the Companion's current revision floor and
 snapshot/tombstone state for that surface.
 
+A result carrying a revision is a floor-absorption point: Emacs MUST treat the
+reported revision exactly as it treats a welcome floor (Section 10.3 step 1) —
+persist it and never subsequently author that surface at a revision less than
+or equal to it. A reported floor above Emacs's own next revision is evidence of
+store divergence; Emacs MUST continue above it, not resend below it.
+
 An applied result additionally acts as a `state.changed` barrier for the
 target surface: Section 14.6's reconciliation rules require the Companion to
 flush or discard pending input-state notifications before returning it.
@@ -1930,6 +1947,13 @@ creation time and receives the next `queue_seq`. Dedupe admission, counter
 advance, replacement, and record insertion MUST be one durable transaction.
 Dedupe is queue compaction; it is not delivery acknowledgement or receiver
 idempotence.
+
+The key space is flat per pairing identity: it is shared across every action
+name, every surface, and every trigger firing that enters the durable queue.
+Two events with equal keys replace each other regardless of origin. A sender
+that does not intend cross-intent replacement MUST author keys that encode the
+replaced intent's identity, as the Section 14.1 example does
+(`heading:123:todo`).
 
 ### 15.3 `queue.replay`
 
@@ -3457,7 +3481,7 @@ responses without transferring general control flow.
       "when":[{"type":"screen","state":"off"}],
       "policy":"queue",
       "ttl_s":86400,
-      "dedupe":"battery-low",
+      "dedupe":"battery.level:low",
       "throttle_s":3600,
       "on_fire":[{"notify":{"text":"Battery ${data.level}%"}}]
     }
@@ -4253,6 +4277,13 @@ A property-name inventory without JSON types is not a sufficient contract
 projection. The projection format MAY evolve independently, but changing its
 format MUST NOT change the EBP wire contract implicitly.
 
+A projection gates shapes, never behavior: ordering, atomicity, clock,
+durability, and session-state semantics are outside any schema's expressive
+range and are testable only against Sections 24.5–24.6 and this document's
+prose. A claim that a tool or artifact enforces part of this document MUST name
+the tool and the exact scope it checks; a conformance claim broader than its
+named scope is a process defect (Section 25).
+
 ### 24.5 Goldens
 
 A Golden MUST be stored as a binary fixture containing one or more complete
@@ -4346,6 +4377,16 @@ Every normative change MUST be classified before publication:
   and safe fallback are complete.
 - A new constraining feature MUST include a positive advertisement and a
   sender-side skip rule.
+
+An amendment that introduces or modifies a monotonically consumed resource — an
+identifier space, a revision or sequence space, a retained floor, a nonce or
+dedupe-retention window, a counter — MUST state that resource's exhaustion
+behavior and its reclamation path, or state explicitly that none exists and why
+that is acceptable.
+
+An amendment that claims a property is enforced MUST name the enforcing tool
+and the scope of its enforcement (compare Section 24.4's duty for conformance
+claims).
 
 An amendment record SHOULD identify affected sections, artifacts, Goldens, and
 human review. Editorial history and reference-implementation status are
