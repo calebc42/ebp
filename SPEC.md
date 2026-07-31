@@ -404,7 +404,12 @@ endpoint MUST treat any transport close it did not initiate as possible
 supersession and apply jittered backoff to automatic redials. The Companion MUST continue to accept
 new loopback connections and allow each to attempt the Section 9 handshake while
 an authenticated session exists — supersession depends on it — and MUST bound the
-number of concurrent pre-authentication connections. A listener that refuses or
+number of concurrent pre-authentication connections. The bound MUST NOT become
+a refusal: a pre-authentication connection that has not completed the Section 9
+handshake within 10 seconds MUST be closed, and when the bound is reached, a
+new dial MUST evict the oldest pre-authentication connection rather than be
+refused — newest-wins, mirroring supersession, so that a legitimate dial
+always gets a handshake attempt even under local flooding. A listener that refuses or
 ignores a second dial while a session, possibly a zombie whose transport has not
 yet closed, is open is non-conformant. A future multi-authority profile MUST
 define active-identity selection, visible-surface and theme ownership, trigger
@@ -836,9 +841,12 @@ its token and EventId receipt records when the user invokes it. Revocation at
 one endpoint closes or prevents future authentication but cannot erase storage
 on a disconnected peer; user interfaces SHOULD make that limitation explicit.
 
-The Companion MUST rate-limit failed proofs per pairing ID and source process
-or connection. It MUST NOT reveal whether an unknown pairing ID or an incorrect
-proof caused authentication failure.
+The Companion MUST rate-limit failed proofs per stored pairing ID and per
+source process or connection, MUST count failed proofs for unknown pairing
+IDs against a single shared bucket rather than per presented ID (Section 9.2
+makes the cases indistinguishable to the caller), and MUST bound the total
+state the rate limiter retains. It MUST NOT reveal whether an unknown
+pairing ID or an incorrect proof caused authentication failure.
 
 ### 9.2 Handshake messages
 
@@ -975,9 +983,11 @@ the connection. Emacs MUST verify
 if verification fails.
 
 This handshake proves knowledge of the selected token and binds the pairing ID,
-both endpoint nonces, and protocol major. It does not encrypt later traffic or
-authenticate each individual message against an active privileged local
-man-in-the-middle. That attacker is outside the threat model of
+both endpoint nonces, and protocol major. It does not encrypt later traffic or authenticate each individual message
+against an active local man-in-the-middle — and interposing on a loopback
+path requires no privilege: an ordinary local process that binds or races
+the configured port and proxies bytes passes this handshake through intact
+and then controls the session. That attacker is outside the threat model of
 `android-loopback-tcp`; a deployment that includes it MUST use a stronger
 transport profile.
 
@@ -1952,7 +1962,10 @@ effective clock.
 When a newly queued event has a `dedupe` key, the Companion MUST atomically
 remove every older queued, non-in-flight event with the same key and pairing
 identity. It MUST NOT remove or replace an event whose `event.action` request is
-in flight without a permanent result. The new event keeps its own ID and
+in flight without a permanent result, nor a head event retained by a Section
+15.3 error pause — the new event is admitted behind the retained head in normal
+FIFO order. Dedupe replacement applies only to queued events that are neither
+in flight nor a retained head. The new event keeps its own ID and
 creation time and receives the next `queue_seq`. Dedupe admission, counter
 advance, replacement, and record insertion MUST be one durable transaction.
 Dedupe is queue compaction; it is not delivery acknowledgement or receiver
@@ -2115,7 +2128,12 @@ identity among toolkits or platforms. A Companion MAY use native platform
 appearance, typography, animation, and input idioms where the declared
 semantics remain observable.
 
-Interactive nodes MUST expose an accessible label. Text MUST be treated as
+Interactive nodes MUST expose an accessible label, derived as the first
+present of: `content_description`, a textual `label` member, the icon
+identifier's name, and the node type. A Companion MUST NOT reject a node for
+lacking an accessibility member. Emacs SHOULD supply `content_description` on
+every interactive node whose only visual content is an icon; the icon
+identifier is a fallback of last resort, not a substitute. Text MUST be treated as
 plain text unless its field explicitly defines structured rich text. A
 Companion MUST NOT interpret ordinary text as HTML, Markdown, Elisp, or another
 executable or markup language.
@@ -4197,9 +4215,13 @@ subject to the bounding and reclamation obligation of the paragraph above.
 
 Loopback addressing prevents remote network access but does not authenticate a
 local process. The HMAC handshake supplies that authentication. It does not
-provide confidentiality or per-message integrity against a privileged local
-attacker. A deployment with a stronger threat model SHOULD use an authenticated
-and encrypted transport profile.
+provide confidentiality or per-message integrity against a local attacker able
+to interpose on the loopback path — which includes an unprivileged process
+that binds or races the configured port, not only a privileged one. A
+deployment with a stronger threat model SHOULD use an authenticated
+and encrypted transport profile. A Companion MUST treat persistent failure to
+bind its configured port as possible squatting and surface it in the pairing
+UI, and MUST NOT listen on a port other than the one that UI displays.
 
 ## 24. Conformance
 
