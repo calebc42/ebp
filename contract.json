@@ -61,7 +61,8 @@
     "dropdown",
     "segmented_button",
     "app_bar_row",
-    "app_bar_column"
+    "app_bar_column",
+    "carousel"
   ],
   "universal_node_attributes": [
     "key",
@@ -692,6 +693,18 @@
         "overflow_icon",
         "max_items"
       ]
+    },
+    "carousel": {
+      "required": [
+        "children"
+      ],
+      "optional": [
+        "strategy",
+        "item_width",
+        "item_spacing",
+        "content_padding",
+        "item_corner"
+      ]
     }
   },
   "field_types": {
@@ -846,7 +859,11 @@
     "snackbar_max_lines": "positive-integer",
     "editable": "boolean",
     "overflow_icon": "identifier",
-    "max_items": "positive-integer"
+    "max_items": "positive-integer",
+    "strategy": "string",
+    "item_width": "dp",
+    "item_spacing": "dp",
+    "item_corner": "dp"
   },
   "enums": {
     "text.style": [
@@ -1135,6 +1152,11 @@
       "top",
       "center",
       "bottom"
+    ],
+    "carousel.strategy": [
+      "multi_browse",
+      "uncontained",
+      "centered_hero"
     ],
     "search_bar.variant": [
       "full_screen",

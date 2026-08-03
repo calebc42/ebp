@@ -87,3 +87,4 @@
 86 {"id":"sb1","on_change":{"action":"period.change"},"options":[{"label":"Day","value":"day"},{"label":"Month","value":"month"}],"t":"segmented_button","value":"day"}
 87 {"items":[{"icon":"attachment","label":"Attach","on_tap":{"action":"mail.attach"}},{"enabled":false,"icon":"event","label":"Calendar","on_tap":{"action":"mail.calendar"}}],"overflow_icon":"more_vert","t":"app_bar_row"}
 88 {"items":[{"icon":"edit","label":"Edit","on_tap":{"action":"doc.edit"}}],"t":"app_bar_column"}
+89 {"children":[{"bg":"primary_container","children":[{"t":"text","text":"One"}],"height":205,"t":"box","width":186},{"bg":"secondary_container","children":[{"t":"text","text":"Two"}],"height":205,"t":"box","width":186}],"item_corner":28,"item_spacing":8,"item_width":186,"strategy":"multi_browse","t":"carousel"}
