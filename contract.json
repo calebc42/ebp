@@ -332,7 +332,8 @@
         "checked_icon",
         "size",
         "shape",
-        "width_mode"
+        "width_mode",
+        "color"
       ]
     },
     "chip": {
@@ -396,7 +397,12 @@
         "suffix",
         "leading_icon",
         "trailing_icon",
-        "max_length"
+        "max_length",
+        "selection",
+        "hide_keyboard_on_submit",
+        "content_padding",
+        "mask",
+        "filter"
       ]
     },
     "editor": {
@@ -425,6 +431,8 @@
       ],
       "optional": [
         "checked",
+        "state",
+        "stroke",
         "label",
         "on_change",
         "enabled"
@@ -484,13 +492,19 @@
       ],
       "optional": [
         "value",
+        "value_end",
         "min",
         "max",
         "values",
         "enabled",
         "track",
+        "orientation",
         "color",
-        "thumb_icon"
+        "color_end",
+        "thumb_icon",
+        "value_label",
+        "track_icon_start",
+        "track_icon_end"
       ]
     },
     "chart": {
@@ -561,6 +575,8 @@
       "optional": [
         "position",
         "caret",
+        "caret_width",
+        "caret_height",
         "rich",
         "title",
         "action_label",
@@ -570,10 +586,10 @@
     },
     "split_button": {
       "required": [
-        "label",
         "on_tap"
       ],
       "optional": [
+        "label",
         "icon",
         "variant",
         "size",
@@ -754,7 +770,22 @@
     "list": "node",
     "detail": "node",
     "extra": "node",
-    "arrangement": "string"
+    "arrangement": "string",
+    "value_end": "number",
+    "orientation": "string",
+    "value_label": "boolean",
+    "color_end": "color",
+    "track_icon_start": "identifier",
+    "track_icon_end": "identifier",
+    "state": "string",
+    "stroke": "stroke-object",
+    "selection": "two-number-array",
+    "hide_keyboard_on_submit": "boolean",
+    "mask": "string",
+    "filter": "string",
+    "caret_width": "dp",
+    "caret_height": "dp",
+    "tooltip": "string"
   },
   "enums": {
     "text.style": [
@@ -923,6 +954,19 @@
       "default",
       "centered"
     ],
+    "slider.orientation": [
+      "horizontal",
+      "vertical"
+    ],
+    "checkbox.state": [
+      "off",
+      "on",
+      "indeterminate"
+    ],
+    "text_input.filter": [
+      "digits",
+      "alnum"
+    ],
     "menu.initial_scroll": [
       "start",
       "end"
@@ -933,7 +977,8 @@
     ],
     "time_button.display_mode": [
       "picker",
-      "input"
+      "input",
+      "switchable"
     ],
     "tooltip.position": [
       "above",
