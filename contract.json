@@ -541,7 +541,13 @@
         "on_refresh",
         "top_bar_style",
         "top_bar_subtitle",
-        "scroll_behavior"
+        "scroll_behavior",
+        "floating_toolbar_orientation",
+        "floating_toolbar_expanded",
+        "floating_toolbar_placement",
+        "floating_toolbar_fab",
+        "floating_toolbar_scroll",
+        "floating_toolbar_exit_direction"
       ]
     },
     "tooltip": {
@@ -699,7 +705,12 @@
     "trailing_description": "string",
     "top_bar_subtitle": "string",
     "scroll_behavior": "string",
-    "icon_position": "string"
+    "icon_position": "string",
+    "floating_toolbar_orientation": "string",
+    "floating_toolbar_expanded": "boolean",
+    "floating_toolbar_placement": "string",
+    "floating_toolbar_scroll": "boolean",
+    "floating_toolbar_exit_direction": "string"
   },
   "enums": {
     "text.style": [
@@ -934,6 +945,23 @@
     "tab_item.icon_position": [
       "above",
       "leading"
+    ],
+    "scaffold.floating_toolbar_orientation": [
+      "horizontal",
+      "vertical"
+    ],
+    "scaffold.floating_toolbar_placement": [
+      "bottom_center",
+      "bottom_start",
+      "bottom_end",
+      "center_start",
+      "center_end"
+    ],
+    "scaffold.floating_toolbar_exit_direction": [
+      "bottom",
+      "top",
+      "start",
+      "end"
     ]
   },
   "actions": {
