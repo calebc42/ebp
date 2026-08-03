@@ -564,7 +564,12 @@
         "floating_toolbar_placement",
         "floating_toolbar_fab",
         "floating_toolbar_scroll",
-        "floating_toolbar_exit_direction"
+        "floating_toolbar_exit_direction",
+        "refresh_indicator",
+        "is_refreshing",
+        "snackbar_duration",
+        "snackbar_dismiss",
+        "snackbar_max_lines"
       ]
     },
     "tooltip": {
@@ -785,7 +790,12 @@
     "filter": "string",
     "caret_width": "dp",
     "caret_height": "dp",
-    "tooltip": "string"
+    "tooltip": "string",
+    "refresh_indicator": "string",
+    "is_refreshing": "boolean",
+    "snackbar_duration": "string",
+    "snackbar_dismiss": "boolean",
+    "snackbar_max_lines": "positive-integer"
   },
   "enums": {
     "text.style": [
@@ -1026,6 +1036,16 @@
       "pinned",
       "enter_always",
       "exit_until_collapsed"
+    ],
+    "scaffold.refresh_indicator": [
+      "default",
+      "loading",
+      "none"
+    ],
+    "scaffold.snackbar_duration": [
+      "short",
+      "long",
+      "indefinite"
     ],
     "tabs.style": [
       "primary",
