@@ -55,7 +55,8 @@
     "scaffold",
     "tooltip",
     "split_button",
-    "pane_scaffold"
+    "pane_scaffold",
+    "navigation_rail"
   ],
   "universal_node_attributes": [
     "key",
@@ -594,6 +595,17 @@
         "extra",
         "variant"
       ]
+    },
+    "navigation_rail": {
+      "required": [
+        "items"
+      ],
+      "optional": [
+        "variant",
+        "expanded",
+        "arrangement",
+        "header"
+      ]
     }
   },
   "field_types": {
@@ -724,7 +736,8 @@
     "floating_toolbar_exit_direction": "string",
     "list": "node",
     "detail": "node",
-    "extra": "node"
+    "extra": "node",
+    "arrangement": "string"
   },
   "enums": {
     "text.style": [
@@ -980,6 +993,15 @@
     "pane_scaffold.variant": [
       "list_detail",
       "supporting"
+    ],
+    "navigation_rail.variant": [
+      "standard",
+      "wide"
+    ],
+    "navigation_rail.arrangement": [
+      "top",
+      "center",
+      "bottom"
     ]
   },
   "actions": {
