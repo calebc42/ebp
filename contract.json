@@ -56,7 +56,8 @@
     "tooltip",
     "split_button",
     "pane_scaffold",
-    "navigation_rail"
+    "navigation_rail",
+    "search_bar"
   ],
   "universal_node_attributes": [
     "key",
@@ -606,6 +607,22 @@
         "arrangement",
         "header"
       ]
+    },
+    "search_bar": {
+      "required": [
+        "id"
+      ],
+      "optional": [
+        "value",
+        "hint",
+        "variant",
+        "on_search",
+        "on_change",
+        "leading_icon",
+        "trailing_icon",
+        "children",
+        "enabled"
+      ]
     }
   },
   "field_types": {
@@ -1002,6 +1019,10 @@
       "top",
       "center",
       "bottom"
+    ],
+    "search_bar.variant": [
+      "full_screen",
+      "docked"
     ]
   },
   "actions": {

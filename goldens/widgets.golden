@@ -81,3 +81,5 @@
 80 {"detail":{"t":"text","text":"Supporting"},"extra":{"t":"text","text":"Extra"},"list":{"t":"text","text":"Main"},"t":"pane_scaffold","variant":"supporting"}
 81 {"items":[{"icon":"home","label":"Home","on_tap":{"action":"nav.home"},"selected":true},{"badge":"3","icon":"search","label":"Search","on_tap":{"action":"nav.search"}}],"t":"navigation_rail"}
 82 {"arrangement":"center","expanded":true,"header":{"icon":"menu","on_tap":{"action":"nav.toggle"},"t":"icon_button"},"items":[{"icon":"home","label":"Home","on_tap":{"action":"nav.home"}}],"t":"navigation_rail","variant":"wide"}
+83 {"children":[{"t":"text","text":"Suggestion 1"}],"hint":"Search","id":"docs_q","leading_icon":"search","on_search":{"action":"docs.search"},"t":"search_bar"}
+84 {"enabled":false,"id":"docked_q","on_change":{"action":"docs.typed"},"t":"search_bar","trailing_icon":"mic","value":"note","variant":"docked"}
