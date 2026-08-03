@@ -54,7 +54,8 @@
     "month_grid",
     "scaffold",
     "tooltip",
-    "split_button"
+    "split_button",
+    "pane_scaffold"
   ],
   "universal_node_attributes": [
     "key",
@@ -583,6 +584,16 @@
         "items",
         "enabled"
       ]
+    },
+    "pane_scaffold": {
+      "required": [
+        "list",
+        "detail"
+      ],
+      "optional": [
+        "extra",
+        "variant"
+      ]
     }
   },
   "field_types": {
@@ -710,7 +721,10 @@
     "floating_toolbar_expanded": "boolean",
     "floating_toolbar_placement": "string",
     "floating_toolbar_scroll": "boolean",
-    "floating_toolbar_exit_direction": "string"
+    "floating_toolbar_exit_direction": "string",
+    "list": "node",
+    "detail": "node",
+    "extra": "node"
   },
   "enums": {
     "text.style": [
@@ -962,6 +976,10 @@
       "top",
       "start",
       "end"
+    ],
+    "pane_scaffold.variant": [
+      "list_detail",
+      "supporting"
     ]
   },
   "actions": {

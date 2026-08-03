@@ -77,3 +77,5 @@
 76 {"action_label":"Dismiss","children":[{"icon":"info","on_tap":{"action":"tip.show"},"t":"icon_button"}],"on_action":{"action":"tip.dismiss"},"position":"below","rich":true,"shown":true,"t":"tooltip","text":"Rich tooltip body","title":"Title"}
 77 {"checked":false,"icon":"edit","id":"doc_split","label":"My Button","on_change":{"action":"doc.expand"},"on_tap":{"action":"doc.edit"},"t":"split_button","trailing_description":"Toggle Button"}
 78 {"items":[{"label":"Edit","on_tap":{"action":"doc.edit"}}],"label":"My Button","on_tap":{"action":"doc.edit"},"on_trailing_tap":{"action":"doc.more"},"size":"large","t":"split_button","trailing_label":"More","variant":"outlined"}
+79 {"detail":{"t":"text","text":"Detail"},"list":{"t":"text","text":"List"},"t":"pane_scaffold"}
+80 {"detail":{"t":"text","text":"Supporting"},"extra":{"t":"text","text":"Extra"},"list":{"t":"text","text":"Main"},"t":"pane_scaffold","variant":"supporting"}
