@@ -57,7 +57,11 @@
     "split_button",
     "pane_scaffold",
     "navigation_rail",
-    "search_bar"
+    "search_bar",
+    "dropdown",
+    "segmented_button",
+    "app_bar_row",
+    "app_bar_column"
   ],
   "universal_node_attributes": [
     "key",
@@ -644,6 +648,50 @@
         "children",
         "enabled"
       ]
+    },
+    "dropdown": {
+      "required": [
+        "id",
+        "options"
+      ],
+      "optional": [
+        "value",
+        "label",
+        "hint",
+        "editable",
+        "on_change",
+        "enabled"
+      ]
+    },
+    "segmented_button": {
+      "required": [
+        "id",
+        "options"
+      ],
+      "optional": [
+        "value",
+        "multi_select",
+        "on_change",
+        "enabled"
+      ]
+    },
+    "app_bar_row": {
+      "required": [
+        "items"
+      ],
+      "optional": [
+        "overflow_icon",
+        "max_items"
+      ]
+    },
+    "app_bar_column": {
+      "required": [
+        "items"
+      ],
+      "optional": [
+        "overflow_icon",
+        "max_items"
+      ]
     }
   },
   "field_types": {
@@ -795,7 +843,10 @@
     "is_refreshing": "boolean",
     "snackbar_duration": "string",
     "snackbar_dismiss": "boolean",
-    "snackbar_max_lines": "positive-integer"
+    "snackbar_max_lines": "positive-integer",
+    "editable": "boolean",
+    "overflow_icon": "identifier",
+    "max_items": "positive-integer"
   },
   "enums": {
     "text.style": [

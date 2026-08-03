@@ -83,3 +83,7 @@
 82 {"arrangement":"center","expanded":true,"header":{"icon":"menu","on_tap":{"action":"nav.toggle"},"t":"icon_button"},"items":[{"icon":"home","label":"Home","on_tap":{"action":"nav.home"}}],"t":"navigation_rail","variant":"wide"}
 83 {"children":[{"t":"text","text":"Suggestion 1"}],"hint":"Search","id":"docs_q","leading_icon":"search","on_search":{"action":"docs.search"},"t":"search_bar"}
 84 {"enabled":false,"id":"docked_q","on_change":{"action":"docs.typed"},"t":"search_bar","trailing_icon":"mic","value":"note","variant":"docked"}
+85 {"id":"dd1","label":"Role","on_change":{"action":"role.pick"},"options":[{"label":"Editor","value":"editor"},{"label":"Viewer","value":"viewer"}],"t":"dropdown","value":"viewer"}
+86 {"id":"sb1","on_change":{"action":"period.change"},"options":[{"label":"Day","value":"day"},{"label":"Month","value":"month"}],"t":"segmented_button","value":"day"}
+87 {"items":[{"icon":"attachment","label":"Attach","on_tap":{"action":"mail.attach"}},{"enabled":false,"icon":"event","label":"Calendar","on_tap":{"action":"mail.calendar"}}],"overflow_icon":"more_vert","t":"app_bar_row"}
+88 {"items":[{"icon":"edit","label":"Edit","on_tap":{"action":"doc.edit"}}],"t":"app_bar_column"}
