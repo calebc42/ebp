@@ -73,3 +73,7 @@
 72 {"id":"zoom_eq","on_change":{"action":"zoom.set"},"t":"slider","value":2.0,"values":[1,2,4]}
 73 {"id":"level_eq","on_change":{"action":"level.set"},"options":[{"label":"One","value":1},{"label":"Two","value":2}],"t":"enum_list","value":2.0}
 74 {"id":"bias_eq","on_change":{"action":"bias.set"},"t":"slider","value":-0.0,"values":[-1,0,1]}
+75 {"caret":true,"children":[{"content_description":"Localized Description","icon":"favorite","on_tap":{"action":"fav.toggle"},"t":"icon_button"}],"position":"above","t":"tooltip","text":"Add to favorites"}
+76 {"action_label":"Dismiss","children":[{"icon":"info","on_tap":{"action":"tip.show"},"t":"icon_button"}],"on_action":{"action":"tip.dismiss"},"position":"below","rich":true,"shown":true,"t":"tooltip","text":"Rich tooltip body","title":"Title"}
+77 {"checked":false,"icon":"edit","id":"doc_split","label":"My Button","on_change":{"action":"doc.expand"},"on_tap":{"action":"doc.edit"},"t":"split_button","trailing_description":"Toggle Button"}
+78 {"items":[{"label":"Edit","on_tap":{"action":"doc.edit"}}],"label":"My Button","on_tap":{"action":"doc.edit"},"on_trailing_tap":{"action":"doc.more"},"size":"large","t":"split_button","trailing_label":"More","variant":"outlined"}

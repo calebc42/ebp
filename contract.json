@@ -52,7 +52,9 @@
     "chart",
     "canvas",
     "month_grid",
-    "scaffold"
+    "scaffold",
+    "tooltip",
+    "split_button"
   ],
   "universal_node_attributes": [
     "key",
@@ -184,7 +186,8 @@
         "align",
         "arrange",
         "scroll",
-        "fill"
+        "fill",
+        "reverse_scroll"
       ]
     },
     "flow_row": {
@@ -214,7 +217,8 @@
       "optional": [
         "color",
         "shape",
-        "elevation"
+        "elevation",
+        "shadow_elevation"
       ]
     },
     "lazy_column": {
@@ -245,7 +249,8 @@
         "on_tap",
         "on_long_tap",
         "swipe_start",
-        "swipe_end"
+        "swipe_end",
+        "variant"
       ]
     },
     "collapsible": {
@@ -279,7 +284,8 @@
         "scrollable",
         "pager_only",
         "on_change",
-        "id"
+        "id",
+        "style"
       ]
     },
     "table": {
@@ -300,7 +306,12 @@
       "optional": [
         "icon",
         "variant",
-        "enabled"
+        "enabled",
+        "size",
+        "shape",
+        "animate_shape",
+        "checked",
+        "on_change"
       ]
     },
     "icon_button": {
@@ -311,7 +322,14 @@
       "optional": [
         "content_description",
         "badge",
-        "enabled"
+        "enabled",
+        "variant",
+        "checked",
+        "on_change",
+        "checked_icon",
+        "size",
+        "shape",
+        "width_mode"
       ]
     },
     "chip": {
@@ -322,7 +340,9 @@
         "on_tap",
         "selected",
         "icon",
-        "enabled"
+        "enabled",
+        "variant",
+        "trailing_icon"
       ]
     },
     "assist_chip": {
@@ -332,7 +352,8 @@
       "optional": [
         "on_tap",
         "icon",
-        "enabled"
+        "enabled",
+        "variant"
       ]
     },
     "menu": {
@@ -341,7 +362,8 @@
       ],
       "optional": [
         "icon",
-        "enabled"
+        "enabled",
+        "initial_scroll"
       ]
     },
     "text_input": {
@@ -363,7 +385,15 @@
         "keyboard",
         "autofocus",
         "clear_on_submit",
-        "enabled"
+        "enabled",
+        "variant",
+        "is_error",
+        "supporting_text",
+        "prefix",
+        "suffix",
+        "leading_icon",
+        "trailing_icon",
+        "max_length"
       ]
     },
     "editor": {
@@ -405,7 +435,8 @@
         "checked",
         "label",
         "on_change",
-        "enabled"
+        "enabled",
+        "thumb_icon"
       ]
     },
     "enum_list": {
@@ -428,7 +459,8 @@
       ],
       "optional": [
         "value",
-        "enabled"
+        "enabled",
+        "mode"
       ]
     },
     "time_button": {
@@ -438,7 +470,8 @@
       ],
       "optional": [
         "value",
-        "enabled"
+        "enabled",
+        "display_mode"
       ]
     },
     "slider": {
@@ -451,7 +484,10 @@
         "min",
         "max",
         "values",
-        "enabled"
+        "enabled",
+        "track",
+        "color",
+        "thumb_icon"
       ]
     },
     "chart": {
@@ -502,7 +538,44 @@
         "drawer",
         "snackbar",
         "snackbar_action",
-        "on_refresh"
+        "on_refresh",
+        "top_bar_style",
+        "top_bar_subtitle",
+        "scroll_behavior"
+      ]
+    },
+    "tooltip": {
+      "required": [
+        "children",
+        "text"
+      ],
+      "optional": [
+        "position",
+        "caret",
+        "rich",
+        "title",
+        "action_label",
+        "on_action",
+        "shown"
+      ]
+    },
+    "split_button": {
+      "required": [
+        "label",
+        "on_tap"
+      ],
+      "optional": [
+        "icon",
+        "variant",
+        "size",
+        "trailing_icon",
+        "trailing_label",
+        "trailing_description",
+        "checked",
+        "on_change",
+        "on_trailing_tap",
+        "items",
+        "enabled"
       ]
     }
   },
@@ -568,7 +641,7 @@
     "mono": "boolean",
     "clip": "boolean",
     "scroll_here": "boolean",
-    "size": "dp",
+    "size": "varies-per-node",
     "spacing": "dp",
     "run_spacing": "dp",
     "content_padding": "dp",
@@ -600,7 +673,33 @@
     "marks": "date-marks-object",
     "aligns": "align-array",
     "time": "string",
-    "fg": "color"
+    "fg": "color",
+    "animate_shape": "boolean",
+    "trailing_icon": "identifier",
+    "shadow_elevation": "dp",
+    "supporting_text": "string",
+    "prefix": "string",
+    "suffix": "string",
+    "leading_icon": "identifier",
+    "is_error": "boolean",
+    "max_length": "positive-integer",
+    "track": "string",
+    "thumb_icon": "identifier",
+    "initial_scroll": "string",
+    "reverse_scroll": "boolean",
+    "mode": "string",
+    "display_mode": "string",
+    "checked_icon": "identifier",
+    "caret": "boolean",
+    "rich": "boolean",
+    "shown": "boolean",
+    "position": "string",
+    "width_mode": "string",
+    "trailing_label": "string",
+    "trailing_description": "string",
+    "top_bar_subtitle": "string",
+    "scroll_behavior": "string",
+    "icon_position": "string"
   },
   "enums": {
     "text.style": [
@@ -621,11 +720,16 @@
     ],
     "progress.variant": [
       "circular",
-      "linear"
+      "linear",
+      "linear_wavy",
+      "circular_wavy",
+      "loading",
+      "contained_loading"
     ],
     "button.variant": [
       "filled",
       "tonal",
+      "elevated",
       "outlined",
       "text"
     ],
@@ -723,6 +827,113 @@
       "cursor",
       "line-start",
       "block"
+    ],
+    "button.size": [
+      "xsmall",
+      "small",
+      "medium",
+      "large",
+      "xlarge"
+    ],
+    "button.shape": [
+      "round",
+      "square"
+    ],
+    "icon_button.variant": [
+      "filled",
+      "tonal",
+      "outlined"
+    ],
+    "card.variant": [
+      "filled",
+      "elevated",
+      "outlined"
+    ],
+    "chip.variant": [
+      "flat",
+      "elevated",
+      "input"
+    ],
+    "assist_chip.variant": [
+      "flat",
+      "elevated",
+      "suggestion",
+      "elevated_suggestion"
+    ],
+    "text_input.variant": [
+      "outlined",
+      "filled"
+    ],
+    "slider.track": [
+      "default",
+      "centered"
+    ],
+    "menu.initial_scroll": [
+      "start",
+      "end"
+    ],
+    "date_button.mode": [
+      "calendar",
+      "input"
+    ],
+    "time_button.display_mode": [
+      "picker",
+      "input"
+    ],
+    "tooltip.position": [
+      "above",
+      "below",
+      "left",
+      "right",
+      "start",
+      "end"
+    ],
+    "icon_button.size": [
+      "xsmall",
+      "small",
+      "medium",
+      "large"
+    ],
+    "icon_button.shape": [
+      "round",
+      "square"
+    ],
+    "icon_button.width_mode": [
+      "narrow",
+      "uniform",
+      "wide"
+    ],
+    "split_button.variant": [
+      "filled",
+      "tonal",
+      "elevated",
+      "outlined"
+    ],
+    "split_button.size": [
+      "xsmall",
+      "small",
+      "medium",
+      "large",
+      "xlarge"
+    ],
+    "scaffold.top_bar_style": [
+      "small",
+      "center",
+      "medium",
+      "large"
+    ],
+    "scaffold.scroll_behavior": [
+      "pinned",
+      "enter_always",
+      "exit_until_collapsed"
+    ],
+    "tabs.style": [
+      "primary",
+      "secondary"
+    ],
+    "tab_item.icon_position": [
+      "above",
+      "leading"
     ]
   },
   "actions": {
