@@ -185,7 +185,8 @@
         "align",
         "arrange",
         "scroll",
-        "fill"
+        "fill",
+        "overlap"
       ]
     },
     "column": {
@@ -198,7 +199,8 @@
         "arrange",
         "scroll",
         "fill",
-        "reverse_scroll"
+        "reverse_scroll",
+        "overlap"
       ]
     },
     "flow_row": {
@@ -325,7 +327,9 @@
         "checked",
         "on_change",
         "expanded",
-        "checked_shape"
+        "checked_shape",
+        "shape_role",
+        "checked_icon"
       ]
     },
     "icon_button": {
@@ -952,7 +956,9 @@
     "top_bar_expanded": "node",
     "top_bar_collapsed_height": "dp",
     "top_bar_expanded_height": "dp",
-    "top_bar_centered": "boolean"
+    "top_bar_centered": "boolean",
+    "overlap": "dp",
+    "shape_role": "enum"
   },
   "enums": {
     "text.style": [
@@ -1315,6 +1321,13 @@
     "search_bar.variant": [
       "full_screen",
       "docked"
+    ],
+    "button.shape_role": [
+      "leading",
+      "middle",
+      "trailing",
+      "top",
+      "bottom"
     ]
   },
   "actions": {
