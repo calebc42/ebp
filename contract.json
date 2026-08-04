@@ -483,7 +483,10 @@
       "optional": [
         "value",
         "enabled",
-        "mode"
+        "mode",
+        "min_date",
+        "max_date",
+        "disabled_weekdays"
       ]
     },
     "time_button": {
@@ -551,6 +554,11 @@
         "selected",
         "min_month",
         "max_month",
+        "min_date",
+        "max_date",
+        "disabled_weekdays",
+        "range_start",
+        "range_end",
         "on_day_tap",
         "on_month_change",
         "children"
@@ -912,7 +920,12 @@
     "sheet_peek_height": "dp",
     "sheet_state": "string",
     "avatar": "identifier",
-    "content_spacing": "dp"
+    "content_spacing": "dp",
+    "min_date": "yyyy-mm-dd",
+    "max_date": "yyyy-mm-dd",
+    "range_start": "yyyy-mm-dd",
+    "range_end": "yyyy-mm-dd",
+    "disabled_weekdays": "weekday-array"
   },
   "enums": {
     "text.style": [
