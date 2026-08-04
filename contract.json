@@ -62,7 +62,10 @@
     "segmented_button",
     "app_bar_row",
     "app_bar_column",
-    "carousel"
+    "carousel",
+    "fab_menu",
+    "button_group",
+    "lazy_grid"
   ],
   "universal_node_attributes": [
     "key",
@@ -705,6 +708,35 @@
         "content_padding",
         "item_corner"
       ]
+    },
+    "fab_menu": {
+      "required": [
+        "items"
+      ],
+      "optional": [
+        "icon",
+        "close_icon"
+      ]
+    },
+    "button_group": {
+      "required": [
+        "items"
+      ],
+      "optional": [
+        "overflow_icon"
+      ]
+    },
+    "lazy_grid": {
+      "required": [
+        "children"
+      ],
+      "optional": [
+        "columns",
+        "min_item_width",
+        "reverse",
+        "spacing",
+        "content_padding"
+      ]
     }
   },
   "field_types": {
@@ -863,7 +895,11 @@
     "strategy": "string",
     "item_width": "dp",
     "item_spacing": "dp",
-    "item_corner": "dp"
+    "item_corner": "dp",
+    "close_icon": "identifier",
+    "columns": "positive-integer",
+    "min_item_width": "dp",
+    "reverse": "boolean"
   },
   "enums": {
     "text.style": [
