@@ -468,7 +468,9 @@
         "multi_select",
         "allow_add",
         "on_change",
-        "enabled"
+        "enabled",
+        "variant",
+        "children"
       ]
     },
     "date_button": {
@@ -1157,6 +1159,10 @@
       "short",
       "long",
       "indefinite"
+    ],
+    "enum_list.variant": [
+      "chips",
+      "radio"
     ],
     "scaffold.sheet_state": [
       "hidden",
