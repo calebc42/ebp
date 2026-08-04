@@ -373,10 +373,11 @@
       ]
     },
     "menu": {
-      "required": [
-        "items"
-      ],
+      "required": [],
       "optional": [
+        "items",
+        "groups",
+        "footer",
         "icon",
         "enabled",
         "initial_scroll"
@@ -940,7 +941,9 @@
     "max_date": "yyyy-mm-dd",
     "range_start": "yyyy-mm-dd",
     "range_end": "yyyy-mm-dd",
-    "disabled_weekdays": "weekday-array"
+    "disabled_weekdays": "weekday-array",
+    "groups": "menu-group-array",
+    "footer": "node"
   },
   "enums": {
     "text.style": [
@@ -1312,8 +1315,8 @@
       "on_pick",
       "on_reorder",
       "on_refresh",
-        "on_sheet_change",
-        "on_expand_change",
+      "on_sheet_change",
+      "on_expand_change",
       "on_long_tap",
       "on_add_row",
       "on_add_col",

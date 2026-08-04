@@ -91,3 +91,4 @@
 90 {"items":[{"icon":"reply","label":"Reply","on_tap":{"action":"mail.reply"}},{"icon":"archive","label":"Archive","on_tap":{"action":"mail.archive"}}],"t":"fab_menu"}
 91 {"items":[{"label":"One","on_tap":{"action":"group.one"}},{"icon":"edit","label":"Edit","on_tap":{"action":"group.edit"}}],"t":"button_group"}
 92 {"children":[{"t":"text","text":"Item 1"},{"t":"text","text":"Item 2"}],"columns":2,"reverse":true,"spacing":8,"t":"lazy_grid"}
+93 {"footer":{"t":"text","text":"footer"},"groups":[{"items":[{"checked":true,"checked_icon":"edit","icon":"edit","label":"Edit","on_tap":{"action":"demo.tap"},"supporting_text":"Edit mode"},{"icon":"settings","label":"Settings","on_tap":{"action":"demo.tap"}}],"label":"Modification"},{"items":[{"label":"Home","on_tap":{"action":"demo.tap"},"trailing_icon":"home"}],"label":"Navigation"}],"icon":"more_vert","t":"menu"}
