@@ -97,3 +97,4 @@
 96 {"children":[{"children":[],"corner":28,"height":205,"t":"box","width":305},{"children":[],"corner":28,"height":205,"t":"box","width":100}],"content_padding":16,"scroll":true,"spacing":8,"t":"row"}
 97 {"children":[{"t":"text","text":"One"},{"t":"text","text":"Two"}],"indicator":{"color":"primary","inset":5,"kind":"outline"},"items":[{"content":{"t":"text","text":"Tab 1"},"label":"Tab 1","selected_content":{"t":"text","text":"* Tab 1"}},{"label":"Tab 2"}],"t":"tabs"}
 98 {"body":{"children":[],"t":"column"},"snackbar":"Snackbar # 1","snackbar_content":{"children":[{"t":"text","text":"Snackbar # 1"},{"color":"inverse_primary","label":"Action","on_tap":{"action":"demo.tap"},"t":"button","variant":"text"}],"t":"row"},"t":"scaffold"}
+99 {"body":{"children":[],"t":"column"},"rail":{"items":[{"icon":"home","label":"Songs","on_tap":{"action":"demo.tap"}}],"t":"navigation_rail"},"t":"scaffold"}

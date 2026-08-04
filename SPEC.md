@@ -1229,6 +1229,7 @@ means `READY`.
 | `pie_menu.dismiss` | Emacs | notification | R | `presentation.pie-menu` | 18 |
 | `theme.set` | Emacs | notification | S, R | `theme` | 18 |
 | `reminders.set` | Emacs | request | S, R | `reminders.owner` | 18 |
+| `window.changed` | Companion | notification | S, R | core | 20 |
 | `edit.open` | Companion | notification | R | `editor.sync` | 19 |
 | `edit.delta` | Companion | notification | R | `editor.sync` | 19 |
 | `edit.caret` | Companion | notification | R | `editor.sync` | 19 |
@@ -3387,6 +3388,20 @@ agree, not that any particular spelling be used.
 The Companion MUST re-check authorization at invocation or trigger-arm time. A
 stale permission snapshot may produce a typed refusal but MUST NOT permit an
 unauthorized operation.
+
+#### 20.1.1 `window.changed`
+
+The Companion reports its window geometry with the `window.changed`
+notification: `{width_dp, height_dp, width_class, height_class}`, the classes
+drawn from `enums."window.size_class"` (compact, medium, expanded) at the
+Material breakpoints (width: 600/840 dp; height: 480/900 dp). It MUST be sent
+once after authentication and again whenever the geometry changes (rotation,
+fold, resize), and MUST NOT be re-sent for an unchanged geometry. The same
+object is mirrored as the `window` member of the `auth.response` welcome when
+the geometry is already known, so the FIRST snapshot can be authored for the
+right class. Emacs uses it to choose between layout forms — a bottom bar
+against a `scaffold.rail` — and MUST treat it as presentation advice, never
+as an event.
 
 ### 20.2 `capability.invoke`
 

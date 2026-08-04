@@ -613,7 +613,8 @@
         "top_bar_collapsed_height",
         "top_bar_expanded_height",
         "top_bar_centered",
-        "snackbar_content"
+        "snackbar_content",
+        "rail"
       ]
     },
     "tooltip": {
@@ -964,7 +965,8 @@
     "overlap": "dp",
     "shape_role": "enum",
     "indicator": "tab-indicator-object",
-    "snackbar_content": "node"
+    "snackbar_content": "node",
+    "rail": "node"
   },
   "enums": {
     "text.style": [
@@ -1338,6 +1340,11 @@
     "theme.layout_direction": [
       "ltr",
       "rtl"
+    ],
+    "window.size_class": [
+      "compact",
+      "medium",
+      "expanded"
     ]
   },
   "actions": {
@@ -2197,6 +2204,24 @@
       "params": {
         "required": [
           "id"
+        ],
+        "optional": []
+      }
+    },
+    "window.changed": {
+      "sender": "companion",
+      "class": "notification",
+      "states": [
+        "SYNCING",
+        "READY"
+      ],
+      "capability": "core",
+      "params": {
+        "required": [
+          "width_dp",
+          "height_dp",
+          "width_class",
+          "height_class"
         ],
         "optional": []
       }
