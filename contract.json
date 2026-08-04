@@ -300,7 +300,8 @@
         "pager_only",
         "on_change",
         "id",
-        "style"
+        "style",
+        "indicator"
       ]
     },
     "table": {
@@ -959,7 +960,8 @@
     "top_bar_expanded_height": "dp",
     "top_bar_centered": "boolean",
     "overlap": "dp",
-    "shape_role": "enum"
+    "shape_role": "enum",
+    "indicator": "tab-indicator-object"
   },
   "enums": {
     "text.style": [
