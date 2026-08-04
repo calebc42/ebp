@@ -354,7 +354,9 @@
         "icon",
         "enabled",
         "variant",
-        "trailing_icon"
+        "trailing_icon",
+        "avatar",
+        "content_spacing"
       ]
     },
     "assist_chip": {
@@ -908,7 +910,9 @@
     "reverse": "boolean",
     "sheet": "node",
     "sheet_peek_height": "dp",
-    "sheet_state": "string"
+    "sheet_state": "string",
+    "avatar": "identifier",
+    "content_spacing": "dp"
   },
   "enums": {
     "text.style": [
