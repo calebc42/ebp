@@ -323,7 +323,8 @@
         "animate_shape",
         "checked",
         "on_change",
-        "expanded"
+        "expanded",
+        "checked_shape"
       ]
     },
     "icon_button": {
@@ -596,7 +597,9 @@
         "sheet_state",
         "on_sheet_change",
         "fab_hide_on_scroll",
-        "drawer_variant"
+        "drawer_variant",
+        "bottom_bar_behavior",
+        "fab_position"
       ]
     },
     "tooltip": {
@@ -929,6 +932,9 @@
     "expanded": "boolean-or-auto",
     "hide_on_collapse": "boolean",
     "drawer_variant": "string",
+    "bottom_bar_behavior": "string",
+    "fab_position": "string",
+    "checked_shape": "string",
     "fab_hide_on_scroll": "boolean",
     "min_date": "yyyy-mm-dd",
     "max_date": "yyyy-mm-dd",
@@ -1233,6 +1239,19 @@
       "modal",
       "dismissible",
       "permanent"
+    ],
+    "scaffold.bottom_bar_behavior": [
+      "pinned",
+      "exit_always"
+    ],
+    "scaffold.fab_position": [
+      "end",
+      "end_overlay",
+      "center"
+    ],
+    "button.checked_shape": [
+      "round",
+      "square"
     ],
     "navigation_rail.arrangement": [
       "top",
