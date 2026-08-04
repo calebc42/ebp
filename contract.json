@@ -331,7 +331,8 @@
         "expanded",
         "checked_shape",
         "shape_role",
-        "checked_icon"
+        "checked_icon",
+        "color"
       ]
     },
     "icon_button": {
@@ -611,7 +612,8 @@
         "top_bar_expanded",
         "top_bar_collapsed_height",
         "top_bar_expanded_height",
-        "top_bar_centered"
+        "top_bar_centered",
+        "snackbar_content"
       ]
     },
     "tooltip": {
@@ -961,7 +963,8 @@
     "top_bar_centered": "boolean",
     "overlap": "dp",
     "shape_role": "enum",
-    "indicator": "tab-indicator-object"
+    "indicator": "tab-indicator-object",
+    "snackbar_content": "node"
   },
   "enums": {
     "text.style": [
