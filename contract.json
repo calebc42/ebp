@@ -1334,6 +1334,10 @@
       "trailing",
       "top",
       "bottom"
+    ],
+    "theme.layout_direction": [
+      "ltr",
+      "rtl"
     ]
   },
   "actions": {
@@ -1852,7 +1856,10 @@
         "optional": [
           "dark",
           "colors",
-          "syntax"
+          "syntax",
+          "dynamic",
+          "font_scale",
+          "layout_direction"
         ]
       }
     },
