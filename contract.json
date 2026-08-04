@@ -595,7 +595,8 @@
         "sheet_peek_height",
         "sheet_state",
         "on_sheet_change",
-        "fab_hide_on_scroll"
+        "fab_hide_on_scroll",
+        "drawer_variant"
       ]
     },
     "tooltip": {
@@ -652,7 +653,9 @@
         "variant",
         "expanded",
         "arrangement",
-        "header"
+        "header",
+        "hide_on_collapse",
+        "on_expand_change"
       ]
     },
     "search_bar": {
@@ -924,6 +927,8 @@
     "avatar": "identifier",
     "content_spacing": "dp",
     "expanded": "boolean-or-auto",
+    "hide_on_collapse": "boolean",
+    "drawer_variant": "string",
     "fab_hide_on_scroll": "boolean",
     "min_date": "yyyy-mm-dd",
     "max_date": "yyyy-mm-dd",
@@ -1221,7 +1226,13 @@
     ],
     "navigation_rail.variant": [
       "standard",
-      "wide"
+      "wide",
+      "modal"
+    ],
+    "scaffold.drawer_variant": [
+      "modal",
+      "dismissible",
+      "permanent"
     ],
     "navigation_rail.arrangement": [
       "top",
@@ -1249,6 +1260,7 @@
       "on_reorder",
       "on_refresh",
         "on_sheet_change",
+        "on_expand_change",
       "on_long_tap",
       "on_add_row",
       "on_add_col",
