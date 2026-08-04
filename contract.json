@@ -186,7 +186,8 @@
         "arrange",
         "scroll",
         "fill",
-        "overlap"
+        "overlap",
+        "content_padding"
       ]
     },
     "column": {
