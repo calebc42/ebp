@@ -1345,6 +1345,10 @@
       "compact",
       "medium",
       "expanded"
+    ],
+    "snackbar.result": [
+      "dismissed",
+      "action"
     ]
   },
   "actions": {
@@ -2225,6 +2229,29 @@
         ],
         "optional": []
       }
+    },
+    "snackbar.show": {
+      "sender": "emacs",
+      "class": "request",
+      "states": [
+        "READY"
+      ],
+      "capability": "presentation.snackbar",
+      "params": {
+        "required": [
+          "message"
+        ],
+        "optional": [
+          "action_label",
+          "duration"
+        ]
+      },
+      "result": {
+        "required": [
+          "result"
+        ],
+        "optional": []
+      }
     }
   },
   "error_codes": {
@@ -2421,6 +2448,7 @@
     "surfaces.tile",
     "surfaces.dialog",
     "presentation.toast",
+    "presentation.snackbar",
     "presentation.pie-menu",
     "theme",
     "reminders.owner",

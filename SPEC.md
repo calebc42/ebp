@@ -1225,6 +1225,7 @@ means `READY`.
 | `state.changed` | Companion | notification | R | core | 14 |
 | `dialog.show` | Emacs | request | R | `surfaces.dialog` | 18 |
 | `toast.show` | Emacs | notification | R | `presentation.toast` | 18 |
+| `snackbar.show` | Emacs | request | R | `presentation.snackbar` | 18 |
 | `pie_menu.show` | Emacs | notification | R | `presentation.pie-menu` | 18 |
 | `pie_menu.dismiss` | Emacs | notification | R | `presentation.pie-menu` | 18 |
 | `theme.set` | Emacs | notification | S, R | `theme` | 18 |
@@ -2757,6 +2758,19 @@ requests fail with the lost session and MUST NOT be resumed after reconnection.
 plain text. `duration_s` MUST be `1..10`; omission selects a platform default.
 A toast is best-effort presentation and MUST NOT contain an action or be used
 as the sole report of a durable failure.
+
+#### 18.2.1 `snackbar.show`
+
+`snackbar.show` is the event-driven snackbar: a REQUEST carrying `{message,
+action_label?, duration?}` whose RESULT reports how the snackbar concluded —
+`{result: "dismissed" | "action"}`, the values of `enums."snackbar.result"`.
+The Companion MUST show it in the snackbar host of the surface currently
+presented (on a multi-view surface, the view being shown), falling back to a
+toast — and answering `dismissed` — when no scaffold host is on screen. The
+request completes when the snackbar leaves the screen, so an Emacs
+application can branch on the outcome the way upstream branches on
+`SnackbarResult`. The static `scaffold.snackbar` members remain the
+authored-tree form; this method is the out-of-band raise.
 
 ### 18.3 Pie menus
 
