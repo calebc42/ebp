@@ -20,7 +20,7 @@
 19 {"children":[],"t":"column"}
 20 {"align":"start","arrange":"start","children":[{"t":"text","text":"a"}],"fill":true,"scroll":false,"spacing":4,"t":"column"}
 21 {"align":"top","arrange":"start","children":[{"label":"a","t":"chip"}],"run_spacing":2,"spacing":4,"t":"flow_row"}
-22 {"alignment":"center","children":[{"t":"text","text":"a"}],"on_tap":{"action":"demo.tap"},"t":"box"}
+22 {"alignment":"center","children":[{"t":"text","text":"a"}],"on_long_tap":{"action":"demo.long"},"on_tap":{"action":"demo.tap"},"t":"box"}
 23 {"children":[{"t":"text","text":"a"}],"color":"surface","elevation":2,"shape":"rounded","t":"surface"}
 24 {"children":[{"t":"text","text":"a"}],"content_padding":8,"spacing":4,"t":"lazy_column"}
 25 {"t":"spacer"}

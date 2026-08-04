@@ -218,7 +218,8 @@
       ],
       "optional": [
         "alignment",
-        "on_tap"
+        "on_tap",
+        "on_long_tap"
       ]
     },
     "surface": {
