@@ -601,7 +601,11 @@
         "fab_hide_on_scroll",
         "drawer_variant",
         "bottom_bar_behavior",
-        "fab_position"
+        "fab_position",
+        "top_bar_expanded",
+        "top_bar_collapsed_height",
+        "top_bar_expanded_height",
+        "top_bar_centered"
       ]
     },
     "tooltip": {
@@ -944,7 +948,11 @@
     "range_end": "yyyy-mm-dd",
     "disabled_weekdays": "weekday-array",
     "groups": "menu-group-array",
-    "footer": "node"
+    "footer": "node",
+    "top_bar_expanded": "node",
+    "top_bar_collapsed_height": "dp",
+    "top_bar_expanded_height": "dp",
+    "top_bar_centered": "boolean"
   },
   "enums": {
     "text.style": [
@@ -1213,7 +1221,10 @@
       "small",
       "center",
       "medium",
-      "large"
+      "large",
+      "medium_flexible",
+      "large_flexible",
+      "two_rows"
     ],
     "scaffold.scroll_behavior": [
       "pinned",
