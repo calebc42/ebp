@@ -322,7 +322,8 @@
         "shape",
         "animate_shape",
         "checked",
-        "on_change"
+        "on_change",
+        "expanded"
       ]
     },
     "icon_button": {
@@ -593,7 +594,8 @@
         "sheet",
         "sheet_peek_height",
         "sheet_state",
-        "on_sheet_change"
+        "on_sheet_change",
+        "fab_hide_on_scroll"
       ]
     },
     "tooltip": {
@@ -921,6 +923,8 @@
     "sheet_state": "string",
     "avatar": "identifier",
     "content_spacing": "dp",
+    "expanded": "boolean-or-auto",
+    "fab_hide_on_scroll": "boolean",
     "min_date": "yyyy-mm-dd",
     "max_date": "yyyy-mm-dd",
     "range_start": "yyyy-mm-dd",
