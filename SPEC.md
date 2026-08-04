@@ -1866,6 +1866,27 @@ MUST publish after each user text change only when `publish_state` is `true`.
 When a node also has an `on_change` action, its `state.changed` notification
 MUST precede that action and both MUST carry the same logical value.
 
+#### 14.6.1 `caret`
+
+A text-valued stateful node authored with `report_caret: true` includes the
+OPTIONAL `caret` member — the cursor's character index within `value` — in
+every `state.changed` it publishes, and additionally publishes when only the
+caret moved (same `value`, new `caret`), under the same debounce ceiling.
+Without `report_caret` the member MUST NOT be sent; the caret is chatty, and
+reporting it is a per-node request, never a default. The caret is transient
+presentation context riding the notification: it is NOT part of the retained
+§13.6 value and MUST NOT participate in value reconciliation.
+
+The `dropdown` node carries `report_caret` today (its editable form is the
+completion field the member exists for), and the member changes two more
+things there, because it hands the completion arithmetic to the author: the
+Companion's local containment filter is DISABLED (the author re-authors
+`options` from the reported token instead), and picking an option dispatches
+`on_change` with the picked label WITHOUT locally replacing the field text —
+the author splices the completed token and re-authors `value`. A plain
+`text_input` MAY adopt the member later; nothing in this section is
+dropdown-specific except that list.
+
 If the Companion debounces state publication, it MUST flush every divergent
 stateful value as ordered `state.changed` notifications before sending an
 `event.action` whose handler could observe those values. This rule applies

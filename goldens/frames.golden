@@ -41,3 +41,4 @@
 40 {"jsonrpc":"2.0","method":"theme.set","params":{"dynamic":true,"font_scale":1.3,"layout_direction":"rtl"}}
 41 {"jsonrpc":"2.0","method":"window.changed","params":{"height_class":"expanded","height_dp":891,"width_class":"compact","width_dp":411}}
 42 {"id":"sb1","jsonrpc":"2.0","method":"snackbar.show","params":{"action_label":"Action","duration":"short","message":"Snackbar # 1"}}
+43 {"jsonrpc":"2.0","method":"state.changed","params":{"caret":12,"id":"flavors","revision_seen":42,"surface":"app:main","value":"cupcake, gin"}}

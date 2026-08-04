@@ -703,7 +703,8 @@
         "hint",
         "editable",
         "on_change",
-        "enabled"
+        "enabled",
+        "report_caret"
       ]
     },
     "segmented_button": {
@@ -966,7 +967,8 @@
     "shape_role": "enum",
     "indicator": "tab-indicator-object",
     "snackbar_content": "node",
-    "rail": "node"
+    "rail": "node",
+    "report_caret": "boolean"
   },
   "enums": {
     "text.style": [
@@ -1769,7 +1771,9 @@
           "id",
           "value"
         ],
-        "optional": []
+        "optional": [
+          "caret"
+        ]
       }
     },
     "dialog.show": {
