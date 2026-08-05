@@ -1,0 +1,9 @@
+00 {"case":"ascii-baseline","final":"iniabcal text","ops":[{"applies":true,"del":2,"len":13,"start":3,"text":"abc"}],"scalars":13,"text":"initial text"}
+01 {"case":"astral-append","final":"abc😀","ops":[{"applies":true,"del":0,"len":4,"start":3,"text":"😀"}],"scalars":4,"text":"abc"}
+02 {"case":"delete-after-astral","final":"a😀bc","ops":[{"applies":true,"del":1,"len":4,"start":3,"text":""}],"scalars":4,"text":"a😀b😀c"}
+03 {"case":"replace-astral-with-astral","final":"x🎼🎼y","ops":[{"applies":true,"del":1,"len":4,"start":1,"text":"🎼🎼"}],"scalars":4,"text":"x𝄞y"}
+04 {"case":"flag-pair-two-scalars-one-grapheme","final":"a🇺🇸","ops":[{"applies":true,"del":0,"len":4,"start":1,"text":"🇺🇸"},{"applies":true,"del":1,"len":3,"start":3,"text":""}],"scalars":3,"text":"ab"}
+05 {"case":"combining-mark-own-scalar","final":"xe","ops":[{"applies":true,"del":1,"len":2,"start":2,"text":""}],"scalars":2,"text":"xé"}
+06 {"case":"delete-astral-at-origin","final":"xy","ops":[{"applies":true,"del":1,"len":2,"start":0,"text":""}],"scalars":2,"text":"😀xy"}
+07 {"case":"reject-utf16-length-arithmetic","final":"😀😀","ops":[{"applies":false,"del":0,"len":5,"start":2,"text":"!"}],"scalars":2,"text":"😀😀"}
+08 {"case":"reject-utf16-start-beyond-scalars","final":"😀😀","ops":[{"applies":false,"del":0,"len":3,"start":4,"text":"!"}],"scalars":2,"text":"😀😀"}
