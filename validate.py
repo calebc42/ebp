@@ -13,6 +13,10 @@ checks an implementation's own test suite should perform (SPEC 24.5–24.6):
 - goldens/frames.golden: every line is a JSON-RPC 2.0 message naming a
   registered method whose id-ness matches its request/notification class and
   whose params keys satisfy the method's required/optional sets;
+- goldens/editor.golden: Section 19 splice known-answers replayed by a
+  reference reducer — positions and lengths are Unicode-scalar counts
+  (SPEC 19.1), with astral-plane and refused-splice coverage floors so an
+  implementation indexing UTF-16 code units or graphemes fails loudly;
 - goldens/wire/: byte-exact framed fixtures decoded by a reference
   Content-Length parser, fed in varied chunk sizes including one octet at a
   time (SPEC 24.5); positive fixtures must decode to the manifest's expected
@@ -723,6 +727,53 @@ def check_decode_rejections():
         problem(f"decode-selftest: {label} was accepted, not rejected")
 
 
+# ---------------------------------------------------- editor splice replay ---
+def check_editor() -> int:
+    """Replay goldens/editor.golden through a reference splice reducer.
+
+    SPEC 19.1: positions and lengths are zero-based Unicode-scalar counts.
+    A Python str indexes code points, which for scalar-clean wire text IS
+    the scalar domain, so the reference arithmetic is direct slicing.  The
+    corpus must keep astral-plane and refused-splice coverage: those are
+    the cases that expose an implementation counting UTF-16 code units
+    (astral char = 2) or grapheme clusters (flag pair = 1) instead.
+    """
+    cases = 0
+    saw_astral = False
+    saw_refusal = False
+    for n, line in enumerate(golden_lines("editor.golden")):
+        case = json.loads(line)
+        path = f"editor:{n:02d}"
+        text = case["text"]
+        for i, op in enumerate(case["ops"]):
+            start, deleted, ins, length = (op["start"], op["del"],
+                                           op["text"], op["len"])
+            if any(ord(c) > 0xFFFF for c in text + ins):
+                saw_astral = True
+            fits = 0 <= start and 0 <= deleted and start + deleted <= len(text)
+            balanced = length == len(text) - deleted + len(ins)
+            if op["applies"] != (fits and balanced):
+                problem(f"{path} op {i}: applies={op['applies']} but the "
+                        f"scalar arithmetic says {fits and balanced}")
+                break
+            if not op["applies"]:
+                saw_refusal = True
+                continue
+            text = text[:start] + ins + text[start + deleted:]
+        if text != case["final"]:
+            problem(f"{path}: replay produced {text!r}, "
+                    f"golden says {case['final']!r}")
+        if case["scalars"] != len(case["final"]):
+            problem(f"{path}: scalars={case['scalars']} but final has "
+                    f"{len(case['final'])} scalar values")
+        cases += 1
+    if not saw_astral:
+        problem("editor: corpus lost its astral-plane coverage")
+    if not saw_refusal:
+        problem("editor: corpus lost its refused-splice coverage")
+    return cases
+
+
 # ------------------------------------------------------------------- main ---
 def main() -> int:
     check_contract()
@@ -753,6 +804,7 @@ def main() -> int:
         hyper += len(arr)
 
     wire = check_wire()
+    editor = check_editor()
 
     # Coverage floors: the corpus really covers the vocabulary.
     covered = {json.loads(line).get("t")
@@ -773,7 +825,8 @@ def main() -> int:
         print(f"\nFAIL: {len(problems)} problem(s)")
         return 1
     print(f"OK: {frames} frames, {widgets} widget lines, {hyper} hypertext "
-          f"nodes, {wire} wire fixtures x3 chunkings validate "
+          f"nodes, {wire} wire fixtures x3 chunkings, "
+          f"{editor} editor splice cases validate "
           f"(spec {contract['spec_version']}, "
           f"format {contract['contract_format']}); "
           f"SPEC §8/§11 in sync; 9.3 KAT reproduced")
