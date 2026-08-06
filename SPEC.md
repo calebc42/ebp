@@ -1597,7 +1597,7 @@ A remote ActionDescriptor has this shape:
 | `when_offline` | `drop` \| `queue` \| `wake` | no | `drop` | Delivery policy if no `READY` session exists |
 | `dedupe` | identifier | no | — | Queue replacement key scoped to the pairing identity |
 | `ttl_s` | integer `1..604800` | conditionally | — | Queue lifetime, required for `queue` and `wake` |
-| `confirm` | non-empty string | no | — | Confirmation shown before an event is created |
+| `confirm` | non-empty string \| confirm object | no | — | Confirmation shown before an event is created (object form below) |
 | `capture_fields` | array of distinct widget IDs | no | `[]` | Stateful values to capture atomically in `event.action.fields` |
 
 An action name MUST contain at least one dot and MUST be registered in an
@@ -1640,6 +1640,24 @@ When `confirm` is present, the Companion MUST present the exact confirmation
 before creating, persisting, or delivering the event. Declining MUST be a
 clean no-op. The Companion MUST NOT defer this confirmation until replay and
 MUST NOT infer confirmation text from a newer surface.
+
+`confirm` is either a non-empty string — the confirmation text — or an object
+authoring the confirmation's face:
+
+| Member | Type | Required | Meaning |
+|---|---|---:|---|
+| `text` | non-empty string | yes | The confirmation text |
+| `title` | string | no | Title presented above the text |
+| `icon` | identifier | no | Icon resolved through the Companion's icon set |
+| `confirm_label` | string | no | Label on the accepting affordance |
+| `dismiss_label` | string | no | Label on the declining affordance |
+
+A bare string is equivalent to `{"text": <string>}`. An object without a
+non-empty `text`, a wrong-typed face member, or a member outside this set
+makes the containing document content-invalid, exactly as an unknown
+descriptor member does. The Companion MUST present `text` verbatim, SHOULD
+present the face members it supports, and MUST fall back to its own
+accept/decline labels when `confirm_label` or `dismiss_label` is absent.
 
 ### 14.2 Companion-local builtins
 

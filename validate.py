@@ -54,6 +54,11 @@ MAX_HEADER = contract["limits"]["fixed"]["max_header_bytes"]
 MAX_BODY = contract["limits"]["fixed"]["max_body_bytes"]
 MAX_DEPTH = contract["limits"]["fixed"]["max_json_depth"]
 
+# SPEC 14.1 (amendment #168): the object-form confirm face's closed member
+# set, and the SPEC 4.4 identifier grammar its `icon` member carries.
+CONFIRM_MEMBERS = {"text", "title", "icon", "confirm_label", "dismiss_label"}
+IDENTIFIER_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:/-]*")
+
 problems: list[str] = []
 
 
@@ -158,6 +163,25 @@ def check_action(obj: dict, path: str):
             for banned in ("ttl_s", "dedupe"):
                 if banned in obj:
                     problem(f"{path}: `{banned}` is invalid for drop")
+        # SPEC 14.1 (amendment #168): confirm is a non-empty string or the
+        # object form {text, title?, icon?, confirm_label?, dismiss_label?}.
+        if "confirm" in obj:
+            c = obj["confirm"]
+            if isinstance(c, dict):
+                for k in c:
+                    if k not in CONFIRM_MEMBERS:
+                        problem(f"{path}: unknown confirm member `{k}`")
+                if not (isinstance(c.get("text"), str) and c.get("text")):
+                    problem(f"{path}: confirm.text must be a non-empty string")
+                for m in ("title", "confirm_label", "dismiss_label"):
+                    if m in c and not isinstance(c[m], str):
+                        problem(f"{path}: confirm.{m} must be a string")
+                if "icon" in c and not (
+                        isinstance(c["icon"], str)
+                        and IDENTIFIER_RE.fullmatch(c["icon"])):
+                    problem(f"{path}: confirm.icon must be an identifier")
+            elif not (isinstance(c, str) and c):
+                problem(f"{path}: confirm must be a non-empty string or object")
     else:
         entry = ACTION_SCHEMA.get(obj["builtin"])
         if entry is None:
