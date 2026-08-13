@@ -42,3 +42,8 @@
 41 {"jsonrpc":"2.0","method":"window.changed","params":{"height_class":"expanded","height_dp":891,"width_class":"compact","width_dp":411}}
 42 {"id":"sb1","jsonrpc":"2.0","method":"snackbar.show","params":{"action_label":"Action","duration":"short","message":"Snackbar # 1"}}
 43 {"jsonrpc":"2.0","method":"state.changed","params":{"caret":12,"id":"flavors","revision_seen":42,"surface":"app:main","value":"cupcake, gin"}}
+44 {"id":"cpk","jsonrpc":"2.0","method":"edit.complete","params":{"cursor":3,"document":"doc:notes/123","editor_id":"body","seq":4,"session":"00112233445566778899aabbccddeeff"}}
+45 {"id":"cpk","jsonrpc":"2.0","result":{"candidates":[{"annotation":"function","insert":"print()","kind":"function","label":"print"},{"label":"printf"}],"prefix":"pri"}}
+46 {"jsonrpc":"2.0","method":"edit.delta","params":{"accept":true,"del":3,"document":"doc:notes/123","editor_id":"body","len":17,"seq":5,"session":"00112233445566778899aabbccddeeff","start":3,"text":"print()"}}
+47 {"id":"cd1","jsonrpc":"2.0","method":"edit.candidate.doc","params":{"document":"doc:notes/123","editor_id":"body","index":0,"seq":4,"session":"00112233445566778899aabbccddeeff"}}
+48 {"id":"cd1","jsonrpc":"2.0","result":{"doc":"Print ARGS to standard output."}}

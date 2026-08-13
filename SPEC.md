@@ -1236,6 +1236,7 @@ means `READY`.
 | `edit.caret` | Companion | notification | R | `editor.sync` | 19 |
 | `edit.close` | Companion | notification | R | `editor.sync` | 19 |
 | `edit.complete` | Companion | request | R | `editor.sync` | 19 |
+| `edit.candidate.doc` | Companion | request | R | `editor.sync` | 19 |
 | `edit.resync` | Emacs | request | R | `editor.sync` | 19 |
 | `edit.apply` | Emacs | request | R | `editor.sync` | 19 |
 | `diagnostics.show` | Emacs | notification | R | `editor.sync` | 19 |
@@ -3251,13 +3252,97 @@ defaults to `label` and MAY be empty. A stale query MUST receive
 `1201 content-invalid` with `data.kind: "content-invalid"` and
 `data.reason: "editor-stale"` and SHOULD trigger a resync.
 
+When the profile of the target presenting the editor session the request
+names — the surface or dialog hosting that session's editor node — advertises
+the `editor.candidate_kind` feature (Section 22.4), a candidate MAY
+additionally contain `kind`, a string naming the candidate's category from
+this closed sender vocabulary: `text`, `method`, `function`, `constructor`,
+`field`, `variable`, `class`, `interface`, `module`, `property`, `unit`,
+`value`, `enum`, `keyword`, `snippet`, `color`, `file`, `reference`, `folder`,
+`enum-member`, `constant`, `struct`, `event`, `operator`, `type-parameter`.
+Emacs MUST NOT send any other value and MUST omit the member entirely when the
+feature is absent. A Companion receiving a `kind` it does not recognize MUST
+present the candidate with no category decoration and MUST NOT reject the
+reply — the vocabulary grows additively, and an unrecognized value is a
+presentation gap, never an error.
+
+> Informative: these are LSP `CompletionItemKind` 1–25 in the Emacs completion
+> ecosystem's spelling — capf backends advertise kind via the `:company-kind`
+> property, which core `elisp-mode` and core `eglot` both emit, so LSP and
+> non-LSP backends alike produce exactly these symbols and the projection from
+> any LSP server is lossless. The reference is informative and the values are
+> enumerated here on purpose: a version-pointer would import external change
+> control while the contract must enumerate the values anyway to be
+> validatable, and external drift is absorbed rather than tracked — a future
+> LSP kind arrives as an absent `kind`, renders undecorated, and joins this
+> vocabulary only through an amendment under Section 25. LSP itself grows this
+> space the same way (a closed set, a `valueSet` advertisement, and graceful
+> degrade).
+
 The returned `prefix` MUST equal the Unicode-scalar substring immediately
 before the requested cursor that the candidate will replace; an empty prefix is
 allowed. On candidate selection, the Companion MUST first verify that the
 session, sequence, cursor, and prefix still match. If they do, it MUST replace
 that prefix with `insert` as one local edit, advance the sequence, and send the
-corresponding `edit.delta`. If they do not, it MUST discard the result without
-changing text and MAY issue a new completion request.
+corresponding `edit.delta`, which MUST carry `accept: true`. An `edit.delta`
+for any local edit that is not a Section 19.3 candidate selection MUST NOT
+carry the `accept` member — omitted, never `false`, so the member's presence
+IS the assertion. Emacs MAY use the assertion to run completion-finishing side
+effects and MAY additionally verify the splice has the selection's replacement
+shape; it MUST apply the splice itself identically whether or not the member
+is present.
+
+If they do not, it MUST discard the result without changing text and MAY issue
+a new completion request — with one exception. Selection MAY proceed against
+an EXTENSION: when every sequence advance since the reply was a local splice
+with `del` 0 whose `start` equals the then-current end of the extension region
+(the requested cursor plus all scalars inserted by prior qualifying splices —
+the caret report is best-effort context and MUST NOT be the test), and the
+tapped candidate belongs to that reply and, at the moment of emission,
+satisfies the Companion's active narrowing predicate over the extended
+prefix — the returned `prefix` followed by the extension — the Companion MAY
+treat the selection as valid: it replaces the extension region, spanning from
+the requested cursor minus the returned prefix's Unicode-scalar length to the
+region's end (so the delta's `del` equals the prefix's length plus the
+extension's length), with `insert` as one local edit, advances the sequence,
+and sends the corresponding `edit.delta` with `accept: true`. The active
+narrowing predicate MUST be one of: the extended prefix is a Unicode-scalar
+prefix of the candidate's `label` or `insert`; or the extended prefix is a
+Unicode-scalar substring of the candidate's `label` or `insert`. A tapped
+candidate that no longer satisfies the active predicate MUST be discarded
+without changing text. Every other divergence — an applied remote splice, a
+deletion, any local edit not at the region's end — MUST still discard.
+
+> Informative: which of the two predicates is active is receiver-local
+> presentation state: it emits no wire member, appears in no profile, and
+> requires no Section 22.4 feature — Emacs's accept check runs against the
+> full returned candidate set by membership and region, never against the
+> displayed subset, so both predicates produce byte-identical wire traffic on
+> a tap. A Companion SHOULD narrow its displayed candidates with the same
+> predicate it enforces at emission; showing what cannot be accepted is a lie
+> of presentation. One combination deserves care: a contains-narrowing
+> Companion feeding an Emacs-side typed-text resolver can display a candidate
+> that typed-text resolution would not select — an explicit confirm SHOULD
+> resolve against the displayed selection, not the typed text.
+
+`edit.candidate.doc` is a request containing `document`, `editor_id`,
+`session`, `seq`, and `index`. It asks for documentation of the `index`-th
+candidate (0-based) of the most recent `edit.complete` result Emacs retains
+for that document and editor. Its result is `{"doc": string}` — plain text
+under Section 16.4's presentation discipline, and MAY be empty when no
+documentation exists. Emacs MUST answer only when the request's session and
+seq equal those of its retained reply (`1201 content-invalid` with
+`data.reason: "editor-stale"` otherwise — the error shape of `edit.complete`)
+and MUST answer `1201 content-invalid` for an `index` outside that reply.
+Emacs SHOULD cap `doc` at 16384 UTF-8 octets, truncating at a Unicode-scalar
+boundary at or below the limit. A Companion SHOULD keep at most one such
+request outstanding per session and SHOULD request documentation only for a
+candidate it is presently highlighting — the method exists to be lazy.
+
+> Informative: volume needs no pagination here. A longer rendering, if ever
+> wanted, is an additive `offset` param under Section 25 — or, better, a full
+> document is what `surface.update` and the buffer machinery already exist to
+> show; the peek method never becomes a transport for manuals.
 
 ### 19.4 Emacs-to-Companion methods
 
@@ -4134,22 +4219,26 @@ from guessing at.
 
 ### 22.4 Feature registry
 
-A profile's `features` array (Section 10.2) advertises the *constraining
-features* the Companion honors on that target. A constraining feature gates a
-construct an ignoring receiver would over-accept, so Section 12's
-constraining-member rule applies: the sender omits the whole construct when the
-feature is absent.
+A profile's `features` array (Section 10.2) advertises the features the
+Companion honors on that target. A *constraining feature* gates a construct an
+ignoring receiver would over-accept, so Section 12's constraining-member rule
+applies: the sender omits the whole construct when the feature is absent. A
+*member-gating feature* gates a member an existing closed object cannot accept
+from an older receiver; the sender omits the gated member when the feature is
+absent.
 
 | Feature | Constrains | Sender rule when absent |
 |---|---|---|
 | `image.https` | an `image` whose `url` carries an `https:` scheme (Section 17.2) | omit the `image` node |
 | `image.data` | an `image` whose `url` carries a `data:image/*` scheme (Section 17.2) | omit the `image` node |
 | `toolbar.<identifier>` | an `editor.toolbar` naming a registered toolbar identifier (Section 17.7) | omit `toolbar`, or supply an inline ToolbarItem array |
+| `editor.candidate_kind` | a Section 19.3 completion candidate carrying `kind` | omit the `kind` member from every candidate |
 
 A feature name is a Section 4.4 identifier. A receiver MUST ignore an
-unrecognized `features` entry. A new constraining feature MUST be registered
-here, with its constrained construct and its sender rule, before any section
-relies on it, and MUST be projected into `contract.json`.
+unrecognized `features` entry. A new constraining or member-gating feature
+MUST be registered here, with its constrained construct or gated member and
+its sender rule, before any section relies on it, and MUST be projected into
+`contract.json`.
 
 ## 23. Security and privacy considerations
 
@@ -4501,8 +4590,8 @@ Every normative change MUST be classified before publication:
 - A new OPTIONAL capability, node type, trigger type, state type, or
   non-constraining field MAY be added within the major when positive discovery
   and safe fallback are complete.
-- A new constraining feature MUST include a positive advertisement and a
-  sender-side skip rule.
+- A new constraining or member-gating feature MUST include a positive
+  advertisement and a sender-side skip rule.
 
 An amendment that introduces or modifies a monotonically consumed resource — an
 identifier space, a revision or sequence space, a retained floor, a nonce or

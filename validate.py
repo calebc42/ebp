@@ -94,6 +94,15 @@ def check_contract():
         for code in entry.get("errors", []):
             if str(code) not in ERROR_CODES:
                 problem(f"contract.json: `{name}` names unknown error {code}")
+    # Amendment #169: the candidate member registry and its closed kind
+    # vocabulary must exist, and the gating feature must be registered.
+    schema = contract.get("candidate_schema")
+    if not isinstance(schema, dict) or not schema.get("kind_enum"):
+        problem("contract.json: missing `candidate_schema` with `kind_enum` "
+                "(amendment #169)")
+    elif schema.get("kind_feature") not in contract.get("features", []):
+        problem("contract.json: candidate_schema.kind_feature is not a "
+                "registered feature")
 
 
 # ------------------------------------------------------- spec cross-check ---
@@ -372,6 +381,51 @@ def check_params(method: str, params, path: str):
             check_node(spec, f"{path}.spec")
         if "stale_spec" in params:
             check_node(params["stale_spec"], f"{path}.stale_spec")
+
+
+def check_result(method: str, result, path: str):
+    """Amendments #169/#172: walk a golden RESPONSE body against the
+    contract's result registration.  A response fixture in frames.golden
+    pairs by id with the request line immediately preceding it; this is
+    the only response-body rail (scope, per #150: exactly the reply
+    fixtures present in frames.golden)."""
+    entry = METHODS.get(method)
+    if entry is None or "result" not in entry:
+        problem(f"{path}: reply pairs with `{method}`, which has no result")
+        return
+    if not isinstance(result, dict):
+        problem(f"{path}: result must be an object")
+        return
+    row = entry["result"]
+    required, optional = set(row["required"]), set(row["optional"])
+    for req in required:
+        if req not in result:
+            problem(f"{path}: {method} result missing required `{req}`")
+    for key in result:
+        if key not in required and key not in optional:
+            problem(f"{path}: unknown result key `{key}` on {method}")
+    if method == "edit.complete":
+        schema = contract["candidate_schema"]
+        allowed = set(schema["required"]) | set(schema["optional"])
+        enum = set(schema["kind_enum"])
+        cands = result.get("candidates")
+        if not isinstance(cands, list):
+            problem(f"{path}: candidates must be an array")
+            return
+        for i, cand in enumerate(cands):
+            cpath = f"{path}.candidates[{i}]"
+            if not isinstance(cand, dict):
+                problem(f"{cpath}: candidate must be an object")
+                continue
+            for req in schema["required"]:
+                if not cand.get(req):
+                    problem(f"{cpath}: missing or empty `{req}`")
+            for key in cand:
+                if key not in allowed:
+                    problem(f"{cpath}: unknown candidate member `{key}`")
+            kind = cand.get("kind")
+            if kind is not None and kind not in enum:
+                problem(f"{cpath}: `kind` value `{kind}` is unregistered")
 
 
 def check_frame(msg, path: str):
@@ -808,8 +862,22 @@ def main() -> int:
     check_decode_rejections()
 
     frames = 0
+    last_request = None  # (method, id) of the most recent request line
     for n, line in enumerate(golden_lines("frames.golden")):
-        check_frame(json.loads(line), f"frames:{n:02d}")
+        msg = json.loads(line)
+        check_frame(msg, f"frames:{n:02d}")
+        if isinstance(msg, dict) and "method" not in msg and "result" in msg:
+            # Amendments #169/#172: a reply fixture pairs by id with the
+            # request line immediately preceding it, and its body is
+            # walked against the contract's result registration.
+            if last_request and msg.get("id") == last_request[1]:
+                check_result(last_request[0], msg["result"],
+                             f"frames:{n:02d}")
+            else:
+                problem(f"frames:{n:02d}: reply has no immediately "
+                        f"preceding request with a matching id")
+        if isinstance(msg, dict) and "method" in msg and "id" in msg:
+            last_request = (msg["method"], msg["id"])
         frames += 1
 
     widgets = 0

@@ -1944,7 +1944,9 @@
           "text",
           "len"
         ],
-        "optional": []
+        "optional": [
+          "accept"
+        ]
       }
     },
     "edit.caret": {
@@ -2005,6 +2007,33 @@
         "required": [
           "prefix",
           "candidates"
+        ],
+        "optional": []
+      },
+      "errors": [
+        1201
+      ]
+    },
+    "edit.candidate.doc": {
+      "sender": "companion",
+      "class": "request",
+      "states": [
+        "READY"
+      ],
+      "capability": "editor.sync",
+      "params": {
+        "required": [
+          "document",
+          "editor_id",
+          "session",
+          "seq",
+          "index"
+        ],
+        "optional": []
+      },
+      "result": {
+        "required": [
+          "doc"
         ],
         "optional": []
       },
@@ -2657,8 +2686,47 @@
   "features": [
     "image.https",
     "image.data",
-    "toolbar.*"
+    "toolbar.*",
+    "editor.candidate_kind"
   ],
+  "candidate_schema": {
+    "required": [
+      "label"
+    ],
+    "optional": [
+      "annotation",
+      "insert",
+      "kind"
+    ],
+    "kind_feature": "editor.candidate_kind",
+    "kind_enum": [
+      "text",
+      "method",
+      "function",
+      "constructor",
+      "field",
+      "variable",
+      "class",
+      "interface",
+      "module",
+      "property",
+      "unit",
+      "value",
+      "enum",
+      "keyword",
+      "snippet",
+      "color",
+      "file",
+      "reference",
+      "folder",
+      "enum-member",
+      "constant",
+      "struct",
+      "event",
+      "operator",
+      "type-parameter"
+    ]
+  },
   "surface_spec_variants": {
     "tile": {
       "required": [
