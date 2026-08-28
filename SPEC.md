@@ -1599,8 +1599,10 @@ not overwrite the draft.
 
 Value-schema compatibility is exact:
 
-- `text_input` requires a string, `password: false` in both snapshots, and no
-  U+000A when the new node is `single_line`;
+- `text_input` requires a string, `password: false` in both snapshots, no
+  U+000A when the new node is `single_line`, no scalar rejected by the new
+  node's `filter`, and no more Unicode scalars than the new node's
+  `max_length` when that member is present;
 - `checkbox` and `switch` remain compatible with the same node type because
   their value is boolean;
 - `enum_list` requires the same `multi_select` mode and every retained value to
@@ -2719,7 +2721,7 @@ node. `editor` uses `read_only` for editing permission in addition to
 | `icon_button` | `icon: identifier`, `on_tap: ActionDescriptor` | `content_description`, `badge`, `enabled` |
 | `chip` | `label: string` | `on_tap`, `selected`, `icon`, `enabled` |
 | `menu` | `items: MenuItem[]` | `icon`, `enabled` |
-| `text_input` | `id: identifier` | `value`, `hint`, `label`, `on_change`, `on_submit`, `single_line`, `min_lines`, `max_lines`, `monospace`, `syntax`, `password`, `keyboard`, `autofocus`, `clear_on_submit`, `enabled` |
+| `text_input` | `id: identifier` | `value`, `hint`, `label`, `on_change`, `on_submit`, `single_line`, `min_lines`, `max_lines`, `monospace`, `syntax`, `password`, `keyboard`, `autofocus`, `clear_on_submit`, `variant`, `is_error`, `supporting_text`, `prefix`, `suffix`, `leading_icon`, `trailing_icon`, `max_length`, `selection`, `hide_keyboard_on_submit`, `content_padding`, `mask`, `filter`, `enabled` |
 | `editor` | `id: identifier` | `document`, `value`, `on_save`, `on_enter`, `single_line`, `min_lines`, `max_lines`, `read_only`, `syntax`, `line_numbers`, `complete`, `chromeless`, `publish_state`, `autofocus`, `toolbar`, `enabled` |
 | `checkbox` | `id: identifier` | `checked`, `label`, `on_change`, `enabled` |
 | `switch` | `id: identifier` | `checked`, `label`, `on_change`, `enabled` |
@@ -2734,20 +2736,26 @@ and `value`; `value` MUST be a
 string, number, or boolean. Option values MUST be distinct under Section 4.3.
 
 For input nodes, every listed `on_*` member is an ActionDescriptor. `value`,
-`hint`, and `label` on `text_input` and `editor.value` are strings;
-`single_line`, `monospace`, `password`, `autofocus`, `clear_on_submit`,
-`read_only`, `line_numbers`, `complete`, `chromeless`, and `publish_state` are
-booleans. `document` is an identifier. Checkbox and switch `checked` values are
-booleans. An `enum_list.value` is one option's scalar value, or an array of
+`hint`, `label`, `supporting_text`, `prefix`, `suffix`, and `mask` on
+`text_input` and `editor.value` are strings; `single_line`, `monospace`,
+`password`, `autofocus`, `clear_on_submit`, `is_error`,
+`hide_keyboard_on_submit`, `read_only`, `line_numbers`, `complete`,
+`chromeless`, and `publish_state` are booleans. `document`, `syntax`,
+`leading_icon`, and `trailing_icon` are identifiers. `max_length` is a positive
+integer, `content_padding` is a finite non-negative `dp` value, and `selection`
+is a two-integer array as defined below. Checkbox and switch `checked` values
+are booleans. An `enum_list.value` is one option's scalar value, or an array of
 distinct option values when `multi_select` is true. Slider `value`, `min`, and
-`max` are finite numbers and `values` is an array of finite numbers. Date and time values use the
-formats stated below. `enabled` is boolean and defaults to `true` for every
-input node.
+`max` are finite numbers and `values` is an array of finite numbers. Date and
+time values use the formats stated below. `enabled` is boolean and defaults to
+`true` for every input node.
 
 `text_input.value` and `editor.value` default to the empty string.
 `single_line`, `monospace`, `password`, `autofocus`, `clear_on_submit`,
-`line_numbers`, `complete`, `chromeless`, `publish_state`, and `read_only`
-default to `false`. `min_lines` and `max_lines` MUST be positive integers, and
+`is_error`, `hide_keyboard_on_submit`, `line_numbers`, `complete`,
+`chromeless`, `publish_state`, and `read_only` default to `false`.
+`variant` defaults to `outlined`. The other added `text_input` members default
+to absence. `min_lines` and `max_lines` MUST be positive integers, and
 `min_lines` MUST NOT exceed `max_lines`. For `text_input`, `min_lines` defaults
 to `1` and `max_lines` defaults to `1` when `single_line` is true and otherwise
 to `min_lines`. For `editor`, `min_lines` defaults to `3` and `max_lines` is
@@ -2775,6 +2783,75 @@ that node's `on_submit`
 or by a `dialog.submit` descriptor in the same active interaction. Password
 handling MUST obey Section 14.6, and `max_field_bytes` applies while the value
 is held in volatile memory.
+
+`variant` is `outlined` (default) or `filled`. These are toolkit-neutral
+presentation intents: `outlined` gives the editable container a visible
+boundary treatment, while `filled` gives it a receiver-native filled-surface
+treatment. Exact shape, colour, label motion, indicator geometry, and animation
+remain renderer-owned under Section 16.4. An unknown value falls back to
+`outlined` under Section 12 rule 6. Every behavioral member has the same
+meaning under both variants.
+
+`supporting_text` is plain text rendered as content belonging to the field and
+measured to the field's own width. `is_error: true` places the field in the
+receiver's error state but does not itself decide application validity. When
+`is_error` is true, `semantics.error` is the accessible error description when
+present; otherwise a non-empty `supporting_text` is the fallback description.
+When neither is present, the Companion MUST still expose an error state but MAY
+use a platform-generic description. `supporting_text` without `is_error` is
+ordinary supporting content and MUST NOT be announced as an error.
+
+`leading_icon` and `trailing_icon` name non-interactive decorations drawn
+inside the field at its leading and trailing edges. They do not create a
+second click target and MUST NOT provide the only route to an action. `prefix`
+and `suffix` are non-editable affixes drawn immediately before and after the
+editable content. Icons and affixes are presentation only: they MUST NOT enter
+`value`, `state.changed`, captured fields, action values, or welcome
+`input_state`. `content_padding` applies the same non-negative inset to all
+four interior sides of the field; it is distinct from a universal outer
+`padding` attribute.
+
+`selection` is exactly `[start, end]`, where both values are non-negative safe
+integers, `start <= end`, and both are zero-based counts of Unicode scalar
+values no greater than the authored `value`'s scalar length. The empty default
+value therefore permits only `[0, 0]`. It seeds selection only for a new
+presentation identity or an input-reset epoch. If a retained dirty draft wins
+over the authored value under Section 13.6, the Companion MUST ignore the
+authored selection rather than apply offsets to different text. Selection is
+presentation state: it is not part of the logical value, a captured field,
+`state.changed`, welcome `input_state`, or draft reconciliation.
+
+`filter` is `digits` or `alnum`. `digits` admits only ASCII `0` through `9`;
+`alnum` admits only ASCII `A` through `Z`, `a` through `z`, and `0` through
+`9`. The fixed sets avoid platform Unicode-version differences. An unknown
+filter falls back to no filter under Section 12 rule 6. An authored value MUST
+already satisfy a recognized filter. Emacs MUST nevertheless validate any
+domain restriction it relies on when the value arrives; the local filter is an
+editing affordance, not application authorization.
+
+`max_length` bounds the logical value in Unicode scalar values. An authored
+value longer than the bound is invalid content. Before committing a local
+edit, the Companion MUST first delete U+000A for `single_line`, then delete
+scalars outside a recognized `filter`, then delete every scalar beyond
+`max_length`. This order applies equally to keyboard entry, paste, drop,
+autofill, and input-method composition. Only the resulting value may be
+retained, published, captured, or injected into an action. The Companion MUST
+also expose `max_length` as the platform's accessible maximum text length.
+
+`mask` is a non-empty display template containing at least one `#`. Each `#`
+consumes and displays one logical Unicode scalar from `value`; every other
+scalar in the template is a literal that never enters the logical value. If
+the value contains more scalars than the template has slots, the remainder is
+displayed unformatted rather than truncated. Cursor and selection mapping
+through the mask MUST be total and MUST preserve scalar boundaries. A mask is
+invalid with `password: true` or with `syntax`, because those members require
+the same output-transformation boundary.
+
+`hide_keyboard_on_submit: true` requires `on_submit`. After that submit
+occurrence is handed to the ordinary action pipeline, the Companion dismisses
+the software input method without waiting for remote completion. Dismissal is
+receiver-local presentation behavior: it does not change admission, delivery,
+result handling, focus ownership, or `clear_on_submit` behavior.
 
 `autofocus: true` MAY acquire focus only when the first accepted snapshot
 containing a new presentation identity is presented. A snapshot with the same

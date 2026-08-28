@@ -4,7 +4,7 @@
 This is the repo's self-check and a runnable reference for the conformance
 checks an implementation's own test suite should perform (SPEC 24.5–24.6):
 
-- contract.json structural self-consistency (format 8);
+- contract.json structural self-consistency (format 9);
 - SPEC.md §8 error table and §11 method registry cross-checked against
   contract.json, so spec and contract cannot drift silently;
 - goldens/widgets.golden and goldens/hypertext.golden: every node validates
@@ -55,6 +55,7 @@ ACTION_SCHEMA = ACTIONS["schema"]
 OFFLINE_POLICIES = set(ACTIONS["offline_policies"])
 VARIANT_SCHEMA = contract.get("variant_schema", {})
 SEMANTICS_SCHEMA = contract.get("semantics_schema", {})
+TEXT_INPUT_SCHEMA = contract.get("text_input_schema", {})
 
 MAX_HEADER = contract["limits"]["fixed"]["max_header_bytes"]
 MAX_BODY = contract["limits"]["fixed"]["max_body_bytes"]
@@ -84,11 +85,11 @@ def check_contract():
     for field in ("contract_format", "protocol_version", "spec_version",
                   "core_node_set", "node_types", "node_schema", "methods",
                   "error_codes", "limits", "capabilities",
-                  "variant_schema", "semantics_schema"):
+                  "variant_schema", "semantics_schema", "text_input_schema"):
         if field not in contract:
             problem(f"contract.json: missing `{field}`")
-    if contract.get("contract_format") != 8:
-        problem("contract.json: contract_format must be 8")
+    if contract.get("contract_format") != 9:
+        problem("contract.json: contract_format must be 9")
     if contract.get("protocol_version") != 3:
         problem("contract.json: protocol_version must be 3")
     for t in contract.get("core_node_set", []):
@@ -214,6 +215,46 @@ def check_contract():
         if role is not None and role not in \
                 SEMANTICS_SCHEMA.get("enums", {}).get("role", []):
             problem(f"contract.json: semantic default for `{node_type}` has unknown role")
+    expected_text_input_schema = {
+        "selection": {
+            "type": "two-number-array", "unit": "unicode-scalar",
+            "minimum": 0, "order": "start<=end",
+            "upper_bound": "authored-value",
+            "lifecycle": "new-presentation-seed",
+            "when_retained_draft_wins": "ignore",
+        },
+        "max_length": {
+            "type": "positive-integer", "unit": "unicode-scalar",
+            "behavior": "truncate-before-commit",
+            "authored_value_must_fit": True,
+            "retained_draft_must_fit": True,
+        },
+        "transform_order": ["single_line", "filter", "max_length"],
+        "filter_character_sets": {
+            "digits": "ascii-digit", "alnum": "ascii-alphanumeric",
+        },
+        "filter_unknown": "none",
+        "filter_authored_value_must_match": True,
+        "filter_retained_draft_must_match": True,
+        "mask": {
+            "slot": "#", "minimum_slots": 1, "unit": "unicode-scalar",
+            "overflow": "unformatted",
+            "incompatible_with": ["password", "syntax"],
+        },
+        "content_padding": {
+            "type": "non-negative-dp",
+            "applies_to": "all-interior-sides",
+        },
+        "variant_default": "outlined",
+        "variant_unknown": "outlined",
+        "hide_keyboard_on_submit_requires": "on_submit",
+        "error_description_precedence": [
+            "semantics.error", "supporting_text",
+        ],
+        "logical_value_excludes": ["prefix", "suffix", "mask-literals"],
+    }
+    if TEXT_INPUT_SCHEMA != expected_text_input_schema:
+        problem("contract.json: text_input_schema drifted from amendment #180")
 
 
 # ------------------------------------------------------- spec cross-check ---
@@ -454,6 +495,91 @@ def check_slider_values(node, path: str):
         problem(f"{path}: discrete slider must omit min and max")
     if "value" in node and not any(spec_equal(v, node["value"]) for v in values):
         problem(f"{path}.value: must equal a listed discrete value (SPEC 4.3)")
+
+
+def check_text_input(node, path: str):
+    """Validate the complete amendment #180 text-input envelope."""
+    value = node.get("value", "")
+    if not isinstance(value, str):
+        problem(f"{path}.value: must be a string")
+        value = ""
+
+    for member in ("supporting_text", "prefix", "suffix"):
+        if member in node and not isinstance(node[member], str):
+            problem(f"{path}.{member}: must be a string")
+    for member in ("leading_icon", "trailing_icon", "syntax"):
+        if member in node and not is_identifier(node[member]):
+            problem(f"{path}.{member}: must be an identifier")
+    for member in ("variant", "filter"):
+        if member in node and not isinstance(node[member], str):
+            problem(f"{path}.{member}: must be a string")
+    for member in ("is_error", "hide_keyboard_on_submit"):
+        if member in node and not isinstance(node[member], bool):
+            problem(f"{path}.{member}: {member} must be a boolean")
+
+    maximum = None
+    if "max_length" in node:
+        maximum = semantic_integer(node["max_length"], 1)
+        if maximum is None:
+            problem(f"{path}.max_length: must be a positive integer")
+        elif len(value) > maximum:
+            problem(f"{path}.value: value exceeds max_length")
+
+    if "content_padding" in node:
+        padding = node["content_padding"]
+        if isinstance(padding, bool) or not isinstance(padding, (int, float)) \
+                or not math.isfinite(float(padding)):
+            problem(f"{path}.content_padding: content_padding must be a finite number")
+        elif padding < 0:
+            problem(f"{path}.content_padding: content_padding must be non-negative")
+
+    if "selection" in node:
+        selection = node["selection"]
+        if not isinstance(selection, list) or len(selection) != 2:
+            problem(f"{path}.selection: must be a two-integer array")
+        else:
+            start = semantic_integer(selection[0], 0)
+            end = semantic_integer(selection[1], 0)
+            if start is None or end is None:
+                if any(semantic_integer(item, -9007199254740991) is None
+                       for item in selection):
+                    problem(f"{path}.selection: must be a two-integer array")
+                else:
+                    problem(f"{path}.selection: offsets must be non-negative")
+            elif start > end:
+                problem(f"{path}.selection: start must not exceed end")
+            elif end > len(value):
+                problem(f"{path}.selection: exceeds authored value")
+
+    filter_name = node.get("filter")
+    if isinstance(filter_name, str) and filter_name in \
+            TEXT_INPUT_SCHEMA.get("filter_character_sets", {}):
+        if filter_name == "digits":
+            matches = all("0" <= scalar <= "9" for scalar in value)
+        else:
+            matches = all(
+                "0" <= scalar <= "9" or
+                "A" <= scalar <= "Z" or
+                "a" <= scalar <= "z"
+                for scalar in value
+            )
+        if not matches:
+            problem(f"{path}.value: value violates filter `{filter_name}`")
+
+    if node.get("hide_keyboard_on_submit") is True and \
+            "on_submit" not in node:
+        problem(f"{path}.hide_keyboard_on_submit: requires on_submit")
+
+    if "mask" in node:
+        mask = node["mask"]
+        if not isinstance(mask, str):
+            problem(f"{path}.mask: must be a string")
+        elif "#" not in mask:
+            problem(f"{path}.mask: mask must contain at least one # slot")
+        if node.get("password") is True:
+            problem(f"{path}.mask: mask is incompatible with password")
+        if "syntax" in node:
+            problem(f"{path}.mask: mask is incompatible with syntax")
 
 
 VARIANT_FORBIDDEN_STATEFUL = {
@@ -732,9 +858,12 @@ def _check_node(value, path: str, depth: int, ctx: NodeDocument,
                 if key != "t" and key not in required and key not in optional \
                         and key not in UNIVERSAL:
                     problem(f"{path}: unknown key `{key}` on {t}")
-            if t == "text_input" and value.get("single_line") \
-                    and "\n" in value.get("value", ""):
-                problem(f"{path}: single_line value contains U+000A (SPEC 17.4)")
+            if t == "text_input":
+                check_text_input(value, path)
+                if value.get("single_line") and \
+                        isinstance(value.get("value", ""), str) and \
+                        "\n" in value.get("value", ""):
+                    problem(f"{path}: single_line value contains U+000A (SPEC 17.4)")
             if t == "enum_list":
                 check_enum_options(value, path)
             if t == "slider":
@@ -1498,6 +1627,27 @@ def check_semantics_goldens() -> int:
     return cases
 
 
+def check_text_input_goldens() -> int:
+    """Run accepted and rejected §17.4 text-input witnesses."""
+    cases = 0
+    for n, line in enumerate(golden_lines("text-input.golden")):
+        case = json.loads(line)
+        start = len(problems)
+        check_node(case.get("node"), f"text-input:{n:02d}")
+        found = problems[start:]
+        del problems[start:]
+        if case.get("valid") is True:
+            if found:
+                problem(f"text-input:{n:02d}: accepted witness rejected: {found}")
+        else:
+            reason = case.get("reason")
+            if not isinstance(reason, str) or not any(reason in p for p in found):
+                problem(f"text-input:{n:02d}: rejected witness did not report "
+                        f"{reason!r}: {found}")
+        cases += 1
+    return cases
+
+
 # ------------------------------------------------------------------- main ---
 def main() -> int:
     check_contract()
@@ -1545,6 +1695,7 @@ def main() -> int:
     wire = check_wire()
     editor = check_editor()
     semantics = check_semantics_goldens()
+    text_inputs = check_text_input_goldens()
 
     # Coverage floors: the corpus really covers the vocabulary.
     covered = {json.loads(line).get("t")
@@ -1566,7 +1717,8 @@ def main() -> int:
         return 1
     print(f"OK: {frames} frames, {widgets} widget lines, {hyper} hypertext "
           f"nodes, {wire} wire fixtures x3 chunkings, "
-          f"{editor} editor splice cases, {semantics} semantics witnesses validate "
+          f"{editor} editor splice cases, {semantics} semantics witnesses, "
+          f"{text_inputs} text-input witnesses validate "
           f"(spec {contract['spec_version']}, "
           f"format {contract['contract_format']}); "
           f"SPEC §8/§11 in sync; 9.3 KAT reproduced")

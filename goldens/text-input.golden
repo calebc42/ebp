@@ -1,0 +1,27 @@
+00 {"valid":true,"node":{"t":"text_input","id":"profile","value":"abc123","variant":"filled","is_error":true,"supporting_text":"Check this value","prefix":"@","suffix":".example","leading_icon":"person","trailing_icon":"edit","max_length":6,"selection":[0,6],"hide_keyboard_on_submit":true,"on_submit":{"action":"profile.submit"},"content_padding":0,"filter":"alnum"}}
+01 {"valid":true,"node":{"t":"text_input","id":"scalar","value":"1😀2","max_length":3,"selection":[1,2],"mask":"##-#"}}
+02 {"valid":true,"node":{"t":"text_input","id":"fallback","value":"é + 1","variant":"future-style","filter":"future-filter"}}
+03 {"valid":true,"node":{"t":"text_input","id":"pin","password":true,"max_length":6,"filter":"digits","on_submit":{"action":"pin.submit"}}}
+04 {"valid":false,"reason":"two-integer array","node":{"t":"text_input","id":"bad-selection-type","selection":"0:0"}}
+05 {"valid":false,"reason":"two-integer array","node":{"t":"text_input","id":"bad-selection-count","selection":[0]}}
+06 {"valid":false,"reason":"two-integer array","node":{"t":"text_input","id":"bad-selection-number","selection":[0,1.5],"value":"ab"}}
+07 {"valid":false,"reason":"non-negative","node":{"t":"text_input","id":"negative-selection","selection":[-1,0]}}
+08 {"valid":false,"reason":"start must not exceed end","node":{"t":"text_input","id":"reversed-selection","value":"ab","selection":[2,1]}}
+09 {"valid":false,"reason":"exceeds authored value","node":{"t":"text_input","id":"utf16-selection","value":"😀","selection":[0,2]}}
+10 {"valid":false,"reason":"positive integer","node":{"t":"text_input","id":"zero-length","max_length":0}}
+11 {"valid":false,"reason":"positive integer","node":{"t":"text_input","id":"fractional-length","max_length":2.5}}
+12 {"valid":false,"reason":"value exceeds max_length","node":{"t":"text_input","id":"long-value","value":"a😀b","max_length":2}}
+13 {"valid":false,"reason":"value violates filter","node":{"t":"text_input","id":"digit-value","value":"12a","filter":"digits"}}
+14 {"valid":false,"reason":"value violates filter","node":{"t":"text_input","id":"ascii-value","value":"café","filter":"alnum"}}
+15 {"valid":false,"reason":"requires on_submit","node":{"t":"text_input","id":"hide-only","hide_keyboard_on_submit":true}}
+16 {"valid":false,"reason":"content_padding must be non-negative","node":{"t":"text_input","id":"negative-padding","content_padding":-1}}
+17 {"valid":false,"reason":"mask must contain at least one # slot","node":{"t":"text_input","id":"empty-mask","mask":""}}
+18 {"valid":false,"reason":"mask must contain at least one # slot","node":{"t":"text_input","id":"literal-mask","mask":"(phone)"}}
+19 {"valid":false,"reason":"mask is incompatible with password","node":{"t":"text_input","id":"secret-mask","password":true,"mask":"####"}}
+20 {"valid":false,"reason":"mask is incompatible with syntax","node":{"t":"text_input","id":"syntax-mask","syntax":"elisp","mask":"####"}}
+21 {"valid":false,"reason":"is_error must be a boolean","node":{"t":"text_input","id":"bad-error","is_error":"true"}}
+22 {"valid":false,"reason":"content_padding must be a finite number","node":{"t":"text_input","id":"bad-padding","content_padding":"4"}}
+23 {"valid":false,"reason":"positive integer","node":{"t":"text_input","id":"unsafe-length","max_length":9007199254740992}}
+24 {"valid":false,"reason":"two-integer array","node":{"t":"text_input","id":"unsafe-selection","selection":[0,9007199254740992]}}
+25 {"valid":false,"reason":"must be a string","node":{"t":"text_input","id":"bad-variant","variant":1}}
+26 {"valid":false,"reason":"must be a string","node":{"t":"text_input","id":"bad-filter","filter":["digits"]}}

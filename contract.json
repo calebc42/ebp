@@ -1,5 +1,5 @@
 {
-  "contract_format": 8,
+  "contract_format": 9,
   "protocol_version": 3,
   "spec_version": "3.1.0-draft",
   "reference_api_version": "3.1.0",
@@ -305,6 +305,62 @@
         ]
       }
     }
+  },
+  "text_input_schema": {
+    "selection": {
+      "type": "two-number-array",
+      "unit": "unicode-scalar",
+      "minimum": 0,
+      "order": "start<=end",
+      "upper_bound": "authored-value",
+      "lifecycle": "new-presentation-seed",
+      "when_retained_draft_wins": "ignore"
+    },
+    "max_length": {
+      "type": "positive-integer",
+      "unit": "unicode-scalar",
+      "behavior": "truncate-before-commit",
+      "authored_value_must_fit": true,
+      "retained_draft_must_fit": true
+    },
+    "transform_order": [
+      "single_line",
+      "filter",
+      "max_length"
+    ],
+    "filter_character_sets": {
+      "digits": "ascii-digit",
+      "alnum": "ascii-alphanumeric"
+    },
+    "filter_unknown": "none",
+    "filter_authored_value_must_match": true,
+    "filter_retained_draft_must_match": true,
+    "mask": {
+      "slot": "#",
+      "minimum_slots": 1,
+      "unit": "unicode-scalar",
+      "overflow": "unformatted",
+      "incompatible_with": [
+        "password",
+        "syntax"
+      ]
+    },
+    "content_padding": {
+      "type": "non-negative-dp",
+      "applies_to": "all-interior-sides"
+    },
+    "variant_default": "outlined",
+    "variant_unknown": "outlined",
+    "hide_keyboard_on_submit_requires": "on_submit",
+    "error_description_precedence": [
+      "semantics.error",
+      "supporting_text"
+    ],
+    "logical_value_excludes": [
+      "prefix",
+      "suffix",
+      "mask-literals"
+    ]
   },
   "node_schema": {
     "text": {
@@ -1112,6 +1168,7 @@
     "hide_keyboard_on_submit": "boolean",
     "mask": "string",
     "filter": "string",
+    "variant": "string",
     "caret_width": "dp",
     "caret_height": "dp",
     "tooltip": "string",
