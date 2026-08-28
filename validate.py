@@ -4,12 +4,15 @@
 This is the repo's self-check and a runnable reference for the conformance
 checks an implementation's own test suite should perform (SPEC 24.5–24.6):
 
-- contract.json structural self-consistency (format 6);
+- contract.json structural self-consistency (format 8);
 - SPEC.md §8 error table and §11 method registry cross-checked against
   contract.json, so spec and contract cannot drift silently;
 - goldens/widgets.golden and goldens/hypertext.golden: every node validates
   against node_schema (+ universal attributes) and every embedded action
   against the discriminated action schema, including offline-policy rules;
+  variant_host alternatives are all walked (including inactive alternatives),
+  share one document-global ID namespace, and deferred variant.switch
+  references resolve only after the complete document has been scanned;
 - goldens/frames.golden: every line is a JSON-RPC 2.0 message naming a
   registered method whose id-ness matches its request/notification class and
   whose params keys satisfy the method's required/optional sets;
@@ -31,6 +34,7 @@ import base64
 import hashlib
 import hmac
 import json
+import math
 import re
 import sys
 from pathlib import Path
@@ -49,15 +53,24 @@ ACTIONS = contract["actions"]
 HOOK_KEYS = set(ACTIONS["hook_keys"])
 ACTION_SCHEMA = ACTIONS["schema"]
 OFFLINE_POLICIES = set(ACTIONS["offline_policies"])
+VARIANT_SCHEMA = contract.get("variant_schema", {})
+SEMANTICS_SCHEMA = contract.get("semantics_schema", {})
 
 MAX_HEADER = contract["limits"]["fixed"]["max_header_bytes"]
 MAX_BODY = contract["limits"]["fixed"]["max_body_bytes"]
 MAX_DEPTH = contract["limits"]["fixed"]["max_json_depth"]
+MAX_NODES = contract["limits"]["fixed"]["max_nodes_per_snapshot"]
+MAX_CHILDREN = contract["limits"]["fixed"]["max_children_per_node"]
+MAX_VARIANTS = contract["limits"]["fixed"]["max_variants_per_host"]
+MAX_SEMANTIC_ACTIONS = \
+    contract["limits"]["fixed"]["max_semantic_actions_per_node"]
+MIN_VARIANTS = VARIANT_SCHEMA.get("min_items", 2)
 
 # SPEC 14.1 (amendment #168): the object-form confirm face's closed member
 # set, and the SPEC 4.4 identifier grammar its `icon` member carries.
 CONFIRM_MEMBERS = {"text", "title", "icon", "confirm_label", "dismiss_label"}
 IDENTIFIER_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:/-]*")
+APP_SURFACE_ID_RE = re.compile(r"app:[A-Za-z0-9][A-Za-z0-9._:/-]*")
 
 problems: list[str] = []
 
@@ -70,11 +83,14 @@ def problem(msg: str):
 def check_contract():
     for field in ("contract_format", "protocol_version", "spec_version",
                   "core_node_set", "node_types", "node_schema", "methods",
-                  "error_codes", "limits", "capabilities"):
+                  "error_codes", "limits", "capabilities",
+                  "variant_schema", "semantics_schema"):
         if field not in contract:
             problem(f"contract.json: missing `{field}`")
-    if contract.get("contract_format") != 6:
-        problem("contract.json: contract_format must be 6")
+    if contract.get("contract_format") != 8:
+        problem("contract.json: contract_format must be 8")
+    if contract.get("protocol_version") != 3:
+        problem("contract.json: protocol_version must be 3")
     for t in contract.get("core_node_set", []):
         if t not in NODE_TYPES:
             problem(f"contract.json: core node `{t}` not in node_types")
@@ -103,6 +119,101 @@ def check_contract():
     elif schema.get("kind_feature") not in contract.get("features", []):
         problem("contract.json: candidate_schema.kind_feature is not a "
                 "registered feature")
+    action_feature = ACTIONS.get("open_surface_feature")
+    if action_feature != "action.open_surface":
+        problem("contract.json: actions.open_surface_feature must register "
+                "action.open_surface")
+    elif action_feature not in contract.get("features", []):
+        problem("contract.json: action.open_surface is not a registered feature")
+    # Amendment #176: project the closed Variant object and the selector
+    # builtin, rather than leaving `variant-array` as an unregistered opaque
+    # field type whose receiver-specific interpretation can drift.
+    if "variant_host" not in NODE_TYPES:
+        problem("contract.json: amendment #176 requires `variant_host`")
+    elif NODE_SCHEMA.get("variant_host") != {
+            "required": ["id", "value", "variants"], "optional": []}:
+        problem("contract.json: variant_host schema must be exactly "
+                "{id, value, variants}")
+    if contract.get("field_types", {}).get("variants") != "variant-array":
+        problem("contract.json: variants field must be `variant-array`")
+    if not isinstance(VARIANT_SCHEMA, dict):
+        problem("contract.json: variant_schema must be an object")
+    else:
+        if VARIANT_SCHEMA.get("required") != ["value", "content"] or \
+                VARIANT_SCHEMA.get("optional") != []:
+            problem("contract.json: Variant must be the closed object "
+                    "{value, content}")
+        if VARIANT_SCHEMA.get("min_items") != 2:
+            problem("contract.json: variant_schema.min_items must be 2")
+        if VARIANT_SCHEMA.get("max_items_limit") != \
+                "max_variants_per_host":
+            problem("contract.json: Variant maximum must reference "
+                    "max_variants_per_host")
+        if VARIANT_SCHEMA.get("value_type") != "identifier" or \
+                VARIANT_SCHEMA.get("content_type") != "node":
+            problem("contract.json: Variant value/content types drifted")
+        rules = VARIANT_SCHEMA.get("content_rules")
+        expected_rules = {
+            "prohibit_stateful_nodes": True,
+            "prohibit_editors": True,
+            "prohibit_nested_variant_hosts": True,
+            "node_ids_remain_document_global": True,
+        }
+        if rules != expected_rules:
+            problem("contract.json: Variant content restrictions drifted")
+    variant_action = ACTION_SCHEMA.get("variant.switch")
+    if variant_action != {"required": ["builtin", "id"],
+                          "optional": ["value"]}:
+        problem("contract.json: variant.switch must require id and allow "
+                "only optional value")
+    if MAX_VARIANTS != 8:
+        problem("contract.json: max_variants_per_host must be 8")
+    if "semantics" not in UNIVERSAL:
+        problem("contract.json: semantics must be a universal node member")
+    if contract.get("field_types", {}).get("semantics") != "semantics-object":
+        problem("contract.json: semantics field must be `semantics-object`")
+    expected_semantic_members = {
+        "name", "description", "state_description", "error", "pane_title",
+        "heading_level", "live_region", "collection", "collection_item",
+        "traversal_group", "traversal_index", "actions",
+    }
+    if set(SEMANTICS_SCHEMA.get("optional", [])) != expected_semantic_members:
+        problem("contract.json: Semantics optional member set drifted")
+    if SEMANTICS_SCHEMA.get("required") != []:
+        problem("contract.json: Semantics must have no required member")
+    semantic_objects = SEMANTICS_SCHEMA.get("objects", {})
+    for name, required in {
+        "collection": {"row_count", "column_count"},
+        "collection_item": {
+            "row_index", "row_span", "column_index", "column_span",
+        },
+        "action": {"label", "on_action"},
+    }.items():
+        row = semantic_objects.get(name, {})
+        if set(row.get("required", [])) != required or row.get("optional") != []:
+            problem(f"contract.json: semantic {name} schema drifted")
+    action_row = semantic_objects.get("action", {})
+    if action_row.get("max_items_limit") != \
+            "max_semantic_actions_per_node" or \
+            action_row.get("distinct_by") != "label":
+        problem("contract.json: semantic action bound/distinctness drifted")
+    if MAX_SEMANTIC_ACTIONS != 8:
+        problem("contract.json: max_semantic_actions_per_node must be 8")
+    if SEMANTICS_SCHEMA.get("enums", {}).get("live_region") != \
+            ["polite", "assertive"]:
+        problem("contract.json: semantic live-region enum drifted")
+    if SEMANTICS_SCHEMA.get("accessible_name_precedence") != [
+            "semantics.name", "content_description", "label", "icon", "t",
+            "node"]:
+        problem("contract.json: accessible-name precedence drifted")
+    defaults = SEMANTICS_SCHEMA.get("default_node_semantics", {})
+    for node_type, row in defaults.items():
+        if node_type not in NODE_TYPES:
+            problem(f"contract.json: semantic default names unknown node `{node_type}`")
+        role = row.get("role")
+        if role is not None and role not in \
+                SEMANTICS_SCHEMA.get("enums", {}).get("role", []):
+            problem(f"contract.json: semantic default for `{node_type}` has unknown role")
 
 
 # ------------------------------------------------------- spec cross-check ---
@@ -152,7 +263,42 @@ def check_spec_sync():
 
 
 # ------------------------------------------------------- nodes and actions --
-def check_action(obj: dict, path: str):
+_NO_VARIANT_VALUE = object()
+
+
+def is_identifier(value) -> bool:
+    return (isinstance(value, str)
+            and IDENTIFIER_RE.fullmatch(value) is not None
+            and len(value.encode("utf-8")) <=
+            contract["limits"]["fixed"]["max_identifier_bytes"])
+
+
+class NodeDocument:
+    """Whole-document facts that cannot be checked in one recursive frame."""
+
+    def __init__(self):
+        self.node_count = 0
+        self.ids: dict[str, str] = {}
+        self.variant_hosts: dict[str, tuple[set[str], str]] = {}
+        self.variant_refs: list[tuple[str, str, object]] = []
+
+    def finish(self):
+        # A selector may occur before its host in tree order, or in an inactive
+        # alternative before a later sibling host. Resolve only after the
+        # complete document has been walked.
+        for path, host_id, selected in self.variant_refs:
+            host = self.variant_hosts.get(host_id)
+            if host is None:
+                problem(f"{path}.id: no variant_host `{host_id}` in this "
+                        "document")
+                continue
+            values, _ = host
+            if selected is not _NO_VARIANT_VALUE and selected not in values:
+                problem(f"{path}.value: `{selected}` is not authored by "
+                        f"variant_host `{host_id}`")
+
+
+def check_action(obj: dict, path: str, ctx: NodeDocument | None = None):
     has_action, has_builtin = "action" in obj, "builtin" in obj
     if has_action == has_builtin:
         problem(f"{path}: action needs exactly one of `action`/`builtin`")
@@ -191,11 +337,34 @@ def check_action(obj: dict, path: str):
                     problem(f"{path}: confirm.icon must be an identifier")
             elif not (isinstance(c, str) and c):
                 problem(f"{path}: confirm must be a non-empty string or object")
+        if "open_surface" in obj:
+            target = obj["open_surface"]
+            if not (isinstance(target, str)
+                    and APP_SURFACE_ID_RE.fullmatch(target)
+                    and len(target.encode("utf-8")) <= 128):
+                problem(f"{path}.open_surface: must be an app Surface ID")
     else:
         entry = ACTION_SCHEMA.get(obj["builtin"])
         if entry is None:
             problem(f"{path}: unknown builtin `{obj['builtin']}`")
             return
+        if obj["builtin"] == "surface.open" and "surface" in obj:
+            target = obj["surface"]
+            if not (isinstance(target, str)
+                    and APP_SURFACE_ID_RE.fullmatch(target)
+                    and len(target.encode("utf-8")) <= 128):
+                problem(f"{path}.surface: must be an app Surface ID")
+        if obj["builtin"] == "variant.switch":
+            host_id = obj.get("id")
+            selected = obj.get("value", _NO_VARIANT_VALUE)
+            if not is_identifier(host_id):
+                problem(f"{path}.id: must be an identifier")
+            if selected is not _NO_VARIANT_VALUE and \
+                    not is_identifier(selected):
+                problem(f"{path}.value: must be an identifier")
+            if ctx is not None and is_identifier(host_id) and \
+                    (selected is _NO_VARIANT_VALUE or is_identifier(selected)):
+                ctx.variant_refs.append((path, host_id, selected))
     required, optional = set(entry["required"]), set(entry["optional"])
     for req in required - {"builtin"}:
         if req not in obj:
@@ -287,24 +456,265 @@ def check_slider_values(node, path: str):
         problem(f"{path}.value: must equal a listed discrete value (SPEC 4.3)")
 
 
-def check_node(value, path: str, depth: int = 0):
+VARIANT_FORBIDDEN_STATEFUL = {
+    "text_input", "checkbox", "switch", "enum_list", "slider",
+    "search_bar", "dropdown", "segmented_button",
+}
+
+# Application payload members are data, not recursive Node positions.  In
+# particular, a perfectly ordinary action argument or chart-point annotation
+# may itself contain a member named `t`; interpreting that value as a widget
+# would pollute document-global IDs and make retained-content admission depend
+# on opaque application data.  Keep this aligned with endpoint walkers.
+OPAQUE_NODE_WALK_MEMBERS = {"args", "meta", "value"}
+
+
+def semantic_integer(value, minimum: int) -> int | None:
+    """An EBP integer by value, excluding booleans and non-finite numbers."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    if not math.isfinite(float(value)) or value != math.floor(value):
+        return None
+    integer = int(value)
+    if integer < minimum or abs(integer) > 9007199254740991:
+        return None
+    return integer
+
+
+def check_semantics(value, path: str, ctx: NodeDocument,
+                    collection_ancestors: tuple[tuple[int, int], ...]):
+    """Validate a universal Semantics object; return its collection bounds."""
+    if not isinstance(value, dict):
+        problem(f"{path}: must be an object")
+        return None
+
+    for member in ("name", "description", "state_description", "error",
+                   "pane_title"):
+        if member in value and not (
+                isinstance(value[member], str) and value[member]):
+            problem(f"{path}.{member}: must be a non-empty plain string")
+
+    if "heading_level" in value and \
+            semantic_integer(value["heading_level"], 1) not in range(1, 7):
+        problem(f"{path}.heading_level: must be an integer 1..6")
+    if "live_region" in value and value["live_region"] not in \
+            SEMANTICS_SCHEMA.get("enums", {}).get("live_region", []):
+        problem(f"{path}.live_region: must be polite or assertive")
+    if "traversal_group" in value and not isinstance(
+            value["traversal_group"], bool):
+        problem(f"{path}.traversal_group: must be a boolean")
+    if "traversal_index" in value:
+        index = value["traversal_index"]
+        if isinstance(index, bool) or not isinstance(index, (int, float)) or \
+                not math.isfinite(float(index)):
+            problem(f"{path}.traversal_index: must be a finite number")
+
+    collection = None
+    if "collection" in value:
+        authored = value["collection"]
+        if not isinstance(authored, dict):
+            problem(f"{path}.collection: must be an object")
+        else:
+            rows = semantic_integer(authored.get("row_count"), 0)
+            columns = semantic_integer(authored.get("column_count"), 1)
+            if rows is None:
+                problem(f"{path}.collection.row_count: must be a non-negative integer")
+            if columns is None:
+                problem(f"{path}.collection.column_count: must be a positive integer")
+            if rows is not None and columns is not None:
+                collection = (rows, columns)
+
+    if "collection_item" in value:
+        item = value["collection_item"]
+        if not isinstance(item, dict):
+            problem(f"{path}.collection_item: must be an object")
+        else:
+            row_index = semantic_integer(item.get("row_index"), 0)
+            row_span = semantic_integer(item.get("row_span"), 1)
+            column_index = semantic_integer(item.get("column_index"), 0)
+            column_span = semantic_integer(item.get("column_span"), 1)
+            for member, checked, description in (
+                    ("row_index", row_index, "a non-negative integer"),
+                    ("row_span", row_span, "a positive integer"),
+                    ("column_index", column_index, "a non-negative integer"),
+                    ("column_span", column_span, "a positive integer")):
+                if checked is None:
+                    problem(f"{path}.collection_item.{member}: must be {description}")
+            if not collection_ancestors:
+                problem(f"{path}.collection_item: requires an authored collection ancestor")
+            elif None not in (row_index, row_span, column_index, column_span):
+                rows, columns = collection_ancestors[-1]
+                if row_index + row_span > rows:
+                    problem(f"{path}.collection_item: row range exceeds ancestor collection")
+                if column_index + column_span > columns:
+                    problem(f"{path}.collection_item: column range exceeds ancestor collection")
+
+    if "actions" in value:
+        actions = value["actions"]
+        if not isinstance(actions, list):
+            problem(f"{path}.actions: must be an array")
+        else:
+            if len(actions) > MAX_SEMANTIC_ACTIONS:
+                problem(f"{path}.actions: exceeds max_semantic_actions_per_node")
+            labels: set[str] = set()
+            for i, action in enumerate(actions):
+                action_path = f"{path}.actions[{i}]"
+                if not isinstance(action, dict):
+                    problem(f"{action_path}: must be an object")
+                    continue
+                label = action.get("label")
+                if not (isinstance(label, str) and label):
+                    problem(f"{action_path}.label: must be a non-empty plain string")
+                elif label in labels:
+                    problem(f"{action_path}.label: duplicate semantic action label")
+                else:
+                    labels.add(label)
+                descriptor = action.get("on_action")
+                if not isinstance(descriptor, dict):
+                    problem(f"{action_path}.on_action: must be an ActionDescriptor")
+                else:
+                    check_action(descriptor, f"{action_path}.on_action", ctx)
+    # SPEC 16.5.1: receiver-forward-compatible unknown members are ignored.
+    return collection
+
+
+def check_variants(node: dict, path: str, depth: int, ctx: NodeDocument,
+                   collection_ancestors: tuple[tuple[int, int], ...]):
+    raw = node.get("variants")
+    if not isinstance(raw, list):
+        problem(f"{path}.variants: must be an array")
+        # Continue walking a malformed container so it cannot conceal nodes or
+        # actions from the complete-document validation pass.
+        _check_node(raw, f"{path}.variants", depth, ctx, True,
+                    collection_ancestors=collection_ancestors)
+        return
+    if not MIN_VARIANTS <= len(raw) <= MAX_VARIANTS:
+        problem(f"{path}.variants: needs {MIN_VARIANTS}..{MAX_VARIANTS} "
+                "alternatives")
+
+    values: set[str] = set()
+    required = set(VARIANT_SCHEMA.get("required", []))
+    optional = set(VARIANT_SCHEMA.get("optional", []))
+    for i, variant in enumerate(raw):
+        vpath = f"{path}.variants[{i}]"
+        if not isinstance(variant, dict):
+            problem(f"{vpath}: Variant must be an object")
+            _check_node(variant, vpath, depth, ctx, True,
+                        collection_ancestors=collection_ancestors)
+            continue
+        for req in required:
+            if req not in variant:
+                problem(f"{vpath}: Variant missing required `{req}`")
+        for key in variant:
+            if key not in required and key not in optional:
+                problem(f"{vpath}: unknown Variant member `{key}`")
+
+        value = variant.get("value")
+        if not is_identifier(value):
+            problem(f"{vpath}.value: must be an identifier")
+        elif value in values:
+            problem(f"{vpath}.value: duplicate variant value `{value}`")
+        else:
+            values.add(value)
+
+        content = variant.get("content")
+        if not (isinstance(content, dict)
+                and isinstance(content.get("t"), str)):
+            problem(f"{vpath}.content: must be a Node")
+
+        # A Variant is closed, but malformed extra members are still walked:
+        # one bad member must not hide an over-budget subtree or action.
+        for key, child in variant.items():
+            if key == "value":
+                continue
+            _check_node(child, f"{vpath}.{key}", depth, ctx, True,
+                        collection_ancestors=collection_ancestors)
+
+    host_id = node.get("id")
+    authored = node.get("value")
+    if not is_identifier(authored):
+        problem(f"{path}.value: must be an identifier")
+    elif authored not in values:
+        problem(f"{path}.value: `{authored}` is not an authored variant")
+    if is_identifier(host_id):
+        # Duplicate IDs were already rejected by the document-global ID pass;
+        # retaining the first host also makes selector diagnostics stable.
+        ctx.variant_hosts.setdefault(host_id, (values, path))
+
+
+def _check_node(value, path: str, depth: int, ctx: NodeDocument,
+                inside_variant: bool = False,
+                sibling_keys: dict[str, str] | None = None,
+                collection_ancestors: tuple[tuple[int, int], ...] = ()):
     if isinstance(value, list):
+        # A root block sequence is one sibling set; nested arrays share the
+        # nearest enclosing Node's set supplied by their caller.
+        keys = sibling_keys if sibling_keys is not None else {}
         for i, child in enumerate(value):
-            check_node(child, f"{path}[{i}]", depth)
+            _check_node(child, f"{path}[{i}]", depth, ctx, inside_variant,
+                        keys, collection_ancestors)
         return
     if not isinstance(value, dict):
         return  # scalars carry no schema
+    node_type = None
+    authored_collection = None
     if "t" in value:
         # SPEC 4.5/16.1 (amendment #108): node nesting depth. The 4.5
         # JSON-container limit is a receiver bound, not a budget a sender may
         # spend — host encoders cap well below it.
         depth += 1
+        ctx.node_count += 1
+        if ctx.node_count == MAX_NODES + 1:
+            problem(f"{path}: document exceeds max_nodes_per_snapshot "
+                    f"({MAX_NODES})")
         if depth > MAX_NODE_DEPTH:
             problem(f"{path}: node nesting exceeds max_node_depth "
                     f"({MAX_NODE_DEPTH}) — reason node-depth")
-            return
         t = value["t"]
-        if t not in NODE_TYPES:
+        node_type = t
+        # Universal presentation identity attributes keep their identifier
+        # type even on unknown/degraded nodes. A present malformed value is
+        # not equivalent to omission (SPEC 16.1/16.3).
+        for member in ("id", "key"):
+            if member in value and not is_identifier(value[member]):
+                problem(f"{path}.{member}: must be an identifier")
+        if is_identifier(value.get("key")) and sibling_keys is not None:
+            node_key = value["key"]
+            if node_key in sibling_keys:
+                problem(f"{path}.key: duplicate sibling key `{node_key}` "
+                        f"(first at {sibling_keys[node_key]})")
+            else:
+                sibling_keys[node_key] = path
+        if is_identifier(value.get("id")):
+            node_id = value["id"]
+            if node_id in ctx.ids:
+                problem(f"{path}.id: duplicate document-global node ID "
+                        f"`{node_id}` (first at {ctx.ids[node_id]})")
+            else:
+                ctx.ids[node_id] = path
+        if "semantics" in value:
+            authored_collection = check_semantics(
+                value["semantics"], f"{path}.semantics", ctx,
+                collection_ancestors)
+        children = value.get("children")
+        if isinstance(children, list) and len(children) > MAX_CHILDREN:
+            problem(f"{path}.children: exceeds max_children_per_node "
+                    f"({MAX_CHILDREN})")
+        if inside_variant:
+            if t == "variant_host":
+                problem(f"{path}: nested variant_host is prohibited in "
+                        "Variant.content")
+            elif t == "editor":
+                problem(f"{path}: editor is prohibited in Variant.content")
+            elif (isinstance(t, str) and
+                  (t in VARIANT_FORBIDDEN_STATEFUL or
+                   (t in {"button", "icon_button"} and
+                    "checked" in value))):
+                problem(f"{path}: Section 14.6 stateful node `{t}` is "
+                        "prohibited in Variant.content")
+        if not isinstance(t, str):
+            problem(f"{path}.t: node discriminator must be a string")
+        elif t not in NODE_TYPES:
             # An unknown type costs us THIS node's schema check and nothing
             # more: its children are still nodes and still spend the same
             # document depth. Returning here truncated the walk, so a single
@@ -329,12 +739,45 @@ def check_node(value, path: str, depth: int = 0):
                 check_enum_options(value, path)
             if t == "slider":
                 check_slider_values(value, path)
+            if t == "variant_host":
+                descendants = collection_ancestors + (
+                    (authored_collection,) if authored_collection else ())
+                check_variants(value, path, depth, ctx, descendants)
+    # Intermediate schema objects do not create a presentation parent; direct
+    # descendant Nodes reached through all their members remain one sibling
+    # set. A Node starts the fresh sibling set for its own descendants.
+    descendant_keys = {} if node_type is not None else sibling_keys
+    descendant_collections = collection_ancestors + (
+        (authored_collection,) if authored_collection else ())
     for key, child in value.items():
+        if node_type == "variant_host" and key == "variants":
+            continue  # check_variants performed the exhaustive branch walk.
+        if node_type is not None and key == "semantics":
+            continue  # recognized members/actions were checked explicitly;
+                      # unknown semantics members are receiver-opaque.
+        if key in OPAQUE_NODE_WALK_MEMBERS:
+            continue
         if (key in HOOK_KEYS or key == "on_trigger") \
                 and isinstance(child, dict):
-            check_action(child, f"{path}.{key}")
+            check_action(child, f"{path}.{key}", ctx)
         else:
-            check_node(child, f"{path}.{key}", depth)
+            _check_node(child, f"{path}.{key}", depth, ctx, inside_variant,
+                        descendant_keys, descendant_collections)
+
+
+def check_node(value, path: str):
+    """Validate one complete node document, including deferred references."""
+    ctx = NodeDocument()
+    _check_node(value, path, 0, ctx)
+    ctx.finish()
+
+
+def check_node_documents(documents: list[tuple[object, str]]):
+    """Validate several roots that together form one complete document."""
+    ctx = NodeDocument()
+    for value, path in documents:
+        _check_node(value, path, 0, ctx)
+    ctx.finish()
 
 
 # ------------------------------------------------------------- frames -------
@@ -375,8 +818,12 @@ def check_params(method: str, params, path: str):
     if method in ("surface.update", "dialog.show"):
         spec = params.get("spec")
         if isinstance(spec, dict) and "views" in spec:
-            for name, view in spec["views"].items():
-                check_node(view, f"{path}.spec.views.{name}")
+            views = spec["views"]
+            if isinstance(views, dict):
+                check_node_documents([
+                    (view, f"{path}.spec.views.{name}")
+                    for name, view in views.items()
+                ])
         else:
             check_node(spec, f"{path}.spec")
         if "stale_spec" in params:
@@ -701,15 +1148,15 @@ def check_hmac_kat():
     pid = "101112131415161718191a1b1c1d1e1f"
     cn = "202122232425262728292a2b2c2d2e2f"
     sn = "303132333435363738393a3b3c3d3e3f"
-    client = hmac.new(token, f"EBP/2 client:{pid}:{cn}:{sn}".encode(),
+    client = hmac.new(token, f"EBP/3 client:{pid}:{cn}:{sn}".encode(),
                       hashlib.sha256).hexdigest()
-    server = hmac.new(token, f"EBP/2 companion:{pid}:{sn}:{cn}".encode(),
+    server = hmac.new(token, f"EBP/3 companion:{pid}:{sn}:{cn}".encode(),
                       hashlib.sha256).hexdigest()
-    if client != ("03e270fd0af4566336283444b641a722"
-                  "b5828c190ebdbe3dc50c5be2c9c9fb43"):
+    if client != ("a76f9e392582c990ef08858fe6974032"
+                  "3499ab87566d9b4e6f99a246bdd024a6"):
         problem(f"hmac-kat: client_proof mismatch: {client}")
-    if server != ("e9333d48cfc2780d708db4a9782705c5"
-                  "e1c988c7eedc2d1734051f2fb9be58ec"):
+    if server != ("ca1c37bcb735442fb979127a07fc41d2"
+                  "a15ea0fcf58ae1ffa4bf06edc0bdfdcc"):
         problem(f"hmac-kat: server_proof mismatch: {server}")
 
 
@@ -766,6 +1213,184 @@ def check_walk_completeness():
     if not any("node-depth" in p for p in found):
         problem("walk-selftest: the walk stopped at the unknown node type — "
                 "the over-depth subtree beneath it went unreported")
+
+
+def check_variant_semantics():
+    """Amendment #176 rails for branch, identity, and deferred-ref rules."""
+
+    def run(doc):
+        saved = problems[:]
+        del problems[:]
+        try:
+            check_node(doc, "variant-selftest")
+            return problems[:]
+        finally:
+            del problems[:]
+            problems.extend(saved)
+
+    # The selector deliberately precedes the host: immediate lookup would
+    # reject a valid document, while the complete-document pass resolves it.
+    positive = {
+        "t": "row",
+        "children": [
+            {"t": "button", "label": "All",
+             "on_tap": {"builtin": "variant.switch", "id": "visibility",
+                        "value": "all"}},
+            {"t": "variant_host", "id": "visibility", "value": "contents",
+             "variants": [
+                 {"value": "contents",
+                  "content": {"t": "text", "id": "contents-copy",
+                              "text": "Contents"}},
+                 {"value": "all",
+                  "content": {"t": "text", "id": "all-copy",
+                              "text": "All"}},
+             ]},
+        ],
+    }
+    found = run(positive)
+    if found:
+        problem("variant-selftest: valid selector-before-host document was "
+                f"rejected: {found}")
+
+    # Every fault is placed in an unselected alternative. A validator that
+    # lazily validates only `value`'s branch misses all of them.
+    variants = [
+        {"value": "a", "content": {"t": "text", "id": "same",
+                                    "text": "active"}},
+        {"value": "b", "content": {"t": "text", "id": "same",
+                                    "text": "duplicate ID"}},
+        {"value": "c", "content": {"t": "text_input", "id": "draft"}},
+        {"value": "d", "content": {
+            "t": "button", "label": "bad",
+            "on_tap": {"builtin": "not.registered"}}},
+        {"value": "e", "content": {"t": "editor", "id": "edit"}},
+        {"value": "f", "content": {
+            "t": "button", "label": "bad feature value",
+            "on_tap": {"action": "demo.open",
+                       "open_surface": "notification:not-an-app"}}},
+        {"value": "g", "content": {"t": "text", "text": "g"}},
+        {"value": "h", "content": {"t": "text", "text": "h"}},
+        {"value": "i", "content": {"t": "text", "text": "i"}},
+    ]
+    negative = {
+        "t": "row",
+        "children": [
+            {"t": "button", "label": "Missing value",
+             "on_tap": {"builtin": "variant.switch", "id": "host",
+                        "value": "absent"}},
+            {"t": "button", "label": "Missing host",
+             "on_tap": {"builtin": "variant.switch", "id": "no-host"}},
+            {"t": "variant_host", "id": "host", "value": "a",
+             "variants": variants},
+        ],
+    }
+    found = run(negative)
+    expected = {
+        "needs 2..8 alternatives": "inactive branches did not spend count",
+        "duplicate document-global node ID": "inactive IDs were not global",
+        "stateful node `text_input`": "inactive stateful node was accepted",
+        "unknown builtin `not.registered`": "inactive action was not checked",
+        "editor is prohibited": "inactive editor was accepted",
+        "must be an app Surface ID": "inactive gated member was not checked",
+        "is not authored by variant_host": "selector value was not resolved",
+        "no variant_host `no-host`": "missing selector host was not resolved",
+    }
+    for needle, message in expected.items():
+        if not any(needle in p for p in found):
+            problem(f"variant-selftest: {message}")
+
+    # Pin the complete Section 14.6 boundary rather than one representative.
+    # Buttons become stateful only when `checked` is authored; plain action
+    # buttons remain legal retained presentation content.
+    forbidden_nodes = [
+        {"t": "search_bar", "id": "search", "value": ""},
+        {"t": "dropdown", "id": "drop", "value": "",
+         "options": []},
+        {"t": "segmented_button", "id": "segments", "options": [
+            {"label": "One", "value": "one"}], "value": "one"},
+        {"t": "button", "id": "toggle", "label": "Toggle",
+         "checked": False},
+        {"t": "icon_button", "id": "icon-toggle", "icon": "check",
+         "content_description": "Toggle", "checked": False},
+    ]
+    for forbidden in forbidden_nodes:
+        kind = forbidden["t"]
+        found = run({
+            "t": "variant_host", "id": "host", "value": "a",
+            "variants": [
+                {"value": "a", "content": {"t": "text", "text": "A"}},
+                {"value": "b", "content": forbidden},
+            ],
+        })
+        if not any(f"stateful node `{kind}`" in p for p in found):
+            problem(f"variant-selftest: inactive stateful {kind} was accepted")
+
+    found = run({
+        "t": "variant_host", "id": "host", "value": "a",
+        "variants": [
+            {"value": "a", "content": {"t": "text", "text": "A"}},
+            {"value": "b", "content": {
+                "t": "button", "label": "Ordinary action",
+                "on_tap": {"action": "demo.action"}}},
+        ],
+    })
+    if any("stateful node `button`" in p for p in found):
+        problem("variant-selftest: plain action button was treated as stateful")
+
+    # Opaque application data is never a hidden Node tree.  The duplicate ID
+    # deliberately appears in both payloads: neither stateful prohibition nor
+    # the complete-document ID namespace may observe it.
+    found = run({
+        "t": "variant_host", "id": "host", "value": "a",
+        "variants": [
+            {"value": "a", "content": {
+                "t": "button", "label": "Opaque args",
+                "on_tap": {"action": "demo.action", "args": {
+                    "t": "text_input", "id": "opaque"}}}},
+            {"value": "b", "content": {
+                "t": "chart", "series": [{"label": "One", "points": [
+                    {"x": 1, "y": 2, "meta": {
+                        "t": "text_input", "id": "opaque"}}]}]}},
+        ],
+    })
+    if any("stateful node `text_input`" in p or
+           "duplicate document-global node ID" in p for p in found):
+        problem("variant-selftest: opaque args/meta were interpreted as nodes")
+
+    identity_faults = run({
+        "t": "variant_host", "id": "host", "value": "a",
+        "variants": [
+            {"value": "a", "content": {"t": "text", "text": "A"}},
+            {"value": "b", "content": {
+                "t": "collapsible", "id": "details",
+                "header": {"t": "text", "text": "Header", "key": "same"},
+                "children": [
+                    {"t": "text", "text": "Body", "key": "same"},
+                    {"t": "text", "text": "Wrong key type", "key": 7},
+                    {"t": "text", "text": "Wrong id type", "id": {}},
+                ]}},
+        ],
+    })
+    for needle, message in {
+        "duplicate sibling key": "named-slot/array duplicate key was accepted",
+        ".key: must be an identifier": "malformed inactive key was accepted",
+        ".id: must be an identifier": "malformed inactive id was accepted",
+    }.items():
+        if not any(needle in p for p in identity_faults):
+            problem(f"variant-selftest: {message}")
+
+    repeated_branch_keys = run({
+        "t": "variant_host", "id": "host", "value": "a",
+        "variants": [
+            {"value": "a", "content": {"t": "column", "children": [
+                {"t": "text", "text": "A", "key": "row"}]}},
+            {"value": "b", "content": {"t": "column", "children": [
+                {"t": "text", "text": "B", "key": "row"}]}},
+        ],
+    })
+    if any("duplicate sibling key" in p for p in repeated_branch_keys):
+        problem("variant-selftest: keys in separate alternatives were "
+                "incorrectly treated as siblings")
 
 
 # ------------------------------------------------- decode rejection self-test
@@ -852,12 +1477,34 @@ def check_editor() -> int:
     return cases
 
 
+def check_semantics_goldens() -> int:
+    """Run accepted and rejected Semantics witnesses without leaking faults."""
+    cases = 0
+    for n, line in enumerate(golden_lines("semantics.golden")):
+        case = json.loads(line)
+        start = len(problems)
+        check_node(case.get("node"), f"semantics:{n:02d}")
+        found = problems[start:]
+        del problems[start:]
+        if case.get("valid") is True:
+            if found:
+                problem(f"semantics:{n:02d}: accepted witness rejected: {found}")
+        else:
+            reason = case.get("reason")
+            if not isinstance(reason, str) or not any(reason in p for p in found):
+                problem(f"semantics:{n:02d}: rejected witness did not report "
+                        f"{reason!r}: {found}")
+        cases += 1
+    return cases
+
+
 # ------------------------------------------------------------------- main ---
 def main() -> int:
     check_contract()
     check_spec_sync()
     check_hmac_kat()
     check_walk_completeness()
+    check_variant_semantics()
     check_equality_semantics()
     check_decode_rejections()
 
@@ -897,6 +1544,7 @@ def main() -> int:
 
     wire = check_wire()
     editor = check_editor()
+    semantics = check_semantics_goldens()
 
     # Coverage floors: the corpus really covers the vocabulary.
     covered = {json.loads(line).get("t")
@@ -918,7 +1566,7 @@ def main() -> int:
         return 1
     print(f"OK: {frames} frames, {widgets} widget lines, {hyper} hypertext "
           f"nodes, {wire} wire fixtures x3 chunkings, "
-          f"{editor} editor splice cases validate "
+          f"{editor} editor splice cases, {semantics} semantics witnesses validate "
           f"(spec {contract['spec_version']}, "
           f"format {contract['contract_format']}); "
           f"SPEC §8/§11 in sync; 9.3 KAT reproduced")

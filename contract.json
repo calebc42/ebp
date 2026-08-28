@@ -1,8 +1,8 @@
 {
-  "contract_format": 6,
-  "protocol_version": 2,
-  "spec_version": "2.0.0-draft",
-  "reference_api_version": "2.0.0",
+  "contract_format": 8,
+  "protocol_version": 3,
+  "spec_version": "3.1.0-draft",
+  "reference_api_version": "3.1.0",
   "core_node_set": [
     "text",
     "row",
@@ -29,6 +29,7 @@
     "box",
     "surface",
     "lazy_column",
+    "variant_host",
     "spacer",
     "divider",
     "card",
@@ -39,7 +40,6 @@
     "button",
     "icon_button",
     "chip",
-    "assist_chip",
     "menu",
     "text_input",
     "editor",
@@ -54,16 +54,12 @@
     "month_grid",
     "scaffold",
     "tooltip",
-    "split_button",
     "pane_scaffold",
     "navigation_rail",
     "search_bar",
     "dropdown",
     "segmented_button",
-    "app_bar_row",
-    "app_bar_column",
     "carousel",
-    "fab_menu",
     "button_group",
     "lazy_grid"
   ],
@@ -87,8 +83,229 @@
     "border",
     "alpha",
     "clip",
-    "align_self"
+    "align_self",
+    "semantics"
   ],
+  "semantics_schema": {
+    "required": [],
+    "optional": [
+      "name",
+      "description",
+      "state_description",
+      "error",
+      "pane_title",
+      "heading_level",
+      "live_region",
+      "collection",
+      "collection_item",
+      "traversal_group",
+      "traversal_index",
+      "actions"
+    ],
+    "field_types": {
+      "name": "non-empty-plain-string",
+      "description": "non-empty-plain-string",
+      "state_description": "non-empty-plain-string",
+      "error": "non-empty-plain-string",
+      "pane_title": "non-empty-plain-string",
+      "heading_level": "integer-1-6",
+      "live_region": "live-region-enum",
+      "collection": "semantic-collection-object",
+      "collection_item": "semantic-collection-item-object",
+      "traversal_group": "boolean",
+      "traversal_index": "finite-number",
+      "actions": "semantic-action-array"
+    },
+    "objects": {
+      "collection": {
+        "required": [
+          "row_count",
+          "column_count"
+        ],
+        "optional": [],
+        "field_types": {
+          "row_count": "non-negative-integer",
+          "column_count": "positive-integer"
+        }
+      },
+      "collection_item": {
+        "required": [
+          "row_index",
+          "row_span",
+          "column_index",
+          "column_span"
+        ],
+        "optional": [],
+        "field_types": {
+          "row_index": "non-negative-integer",
+          "row_span": "positive-integer",
+          "column_index": "non-negative-integer",
+          "column_span": "positive-integer"
+        }
+      },
+      "action": {
+        "required": [
+          "label",
+          "on_action"
+        ],
+        "optional": [],
+        "field_types": {
+          "label": "non-empty-plain-string",
+          "on_action": "action-descriptor"
+        },
+        "max_items_limit": "max_semantic_actions_per_node",
+        "distinct_by": "label"
+      }
+    },
+    "enums": {
+      "live_region": [
+        "polite",
+        "assertive"
+      ],
+      "role": [
+        "button",
+        "image",
+        "text_input",
+        "checkbox",
+        "switch",
+        "selection_group",
+        "tab_group",
+        "dropdown",
+        "slider",
+        "progress"
+      ]
+    },
+    "accessible_name_precedence": [
+      "semantics.name",
+      "content_description",
+      "label",
+      "icon",
+      "t",
+      "node"
+    ],
+    "receiver_unknown_members": "ignore",
+    "authoring_unknown_members": "reject",
+    "collection_item_requires_ancestor_collection": true,
+    "traversal_scope": "nearest_group_or_document_root",
+    "equal_traversal_index_order": "document",
+    "default_node_semantics": {
+      "section_header": {
+        "heading_level": 2
+      },
+      "progress": {
+        "role": "progress",
+        "progress_value_member": "value",
+        "progress_min": 0,
+        "progress_max": 1,
+        "indeterminate_when_value_absent": true
+      },
+      "image": {
+        "role": "image"
+      },
+      "button": {
+        "role": "button",
+        "enabled_member": "enabled",
+        "checked_member": "checked"
+      },
+      "icon_button": {
+        "role": "button",
+        "enabled_member": "enabled",
+        "checked_member": "checked"
+      },
+      "chip": {
+        "role": "button",
+        "role_condition_member": "on_tap",
+        "enabled_member": "enabled",
+        "selected_member": "selected",
+        "selected_default": false
+      },
+      "empty_state": {
+        "role": "button",
+        "role_condition_member": "on_tap"
+      },
+      "date_button": {
+        "role": "button",
+        "enabled_member": "enabled"
+      },
+      "time_button": {
+        "role": "button",
+        "enabled_member": "enabled"
+      },
+      "text_input": {
+        "role": "text_input",
+        "enabled_member": "enabled"
+      },
+      "editor": {
+        "role": "text_input",
+        "enabled_member": "enabled",
+        "read_only_member": "read_only"
+      },
+      "search_bar": {
+        "role": "text_input",
+        "enabled_member": "enabled"
+      },
+      "dropdown": {
+        "role": "dropdown",
+        "enabled_member": "enabled",
+        "read_only_member": "editable",
+        "read_only_inverted": true
+      },
+      "checkbox": {
+        "role": "checkbox",
+        "enabled_member": "enabled",
+        "checked_member": "checked",
+        "toggle_state_member": "state",
+        "checked_default": false
+      },
+      "switch": {
+        "role": "switch",
+        "enabled_member": "enabled",
+        "checked_member": "checked",
+        "checked_default": false
+      },
+      "enum_list": {
+        "role": "selection_group",
+        "enabled_member": "enabled",
+        "selection_member": "value"
+      },
+      "tabs": {
+        "role": "tab_group",
+        "selection_member": "initial",
+        "selection_default_index": 0
+      },
+      "segmented_button": {
+        "role": "tab_group",
+        "enabled_member": "enabled",
+        "selection_member": "value"
+      },
+      "slider": {
+        "role": "slider",
+        "enabled_member": "enabled",
+        "progress_value_member": "value",
+        "progress_min_member": "min",
+        "progress_max_member": "max",
+        "progress_min": 0,
+        "progress_max": 1,
+        "progress_value_defaults_to_min": true
+      },
+      "card": {
+        "role": "button",
+        "role_condition_member": "on_tap",
+        "custom_actions_from": [
+          "swipe_start",
+          "swipe_end"
+        ]
+      },
+      "collapsible": {
+        "expanded_member": "collapsed",
+        "expanded_inverted": true,
+        "custom_actions_from": [
+          "swipe_start",
+          "swipe_end"
+        ]
+      }
+    }
+  },
   "node_schema": {
     "text": {
       "required": [
@@ -245,6 +462,14 @@
         "content_padding"
       ]
     },
+    "variant_host": {
+      "required": [
+        "id",
+        "value",
+        "variants"
+      ],
+      "optional": []
+    },
     "spacer": {
       "required": [],
       "optional": []
@@ -369,17 +594,6 @@
         "content_spacing"
       ]
     },
-    "assist_chip": {
-      "required": [
-        "label"
-      ],
-      "optional": [
-        "on_tap",
-        "icon",
-        "enabled",
-        "variant"
-      ]
-    },
     "menu": {
       "required": [],
       "optional": [
@@ -435,6 +649,9 @@
         "value",
         "on_save",
         "on_enter",
+        "single_line",
+        "min_lines",
+        "max_lines",
         "read_only",
         "syntax",
         "line_numbers",
@@ -634,25 +851,6 @@
         "shown"
       ]
     },
-    "split_button": {
-      "required": [
-        "on_tap"
-      ],
-      "optional": [
-        "label",
-        "icon",
-        "variant",
-        "size",
-        "trailing_icon",
-        "trailing_label",
-        "trailing_description",
-        "checked",
-        "on_change",
-        "on_trailing_tap",
-        "items",
-        "enabled"
-      ]
-    },
     "pane_scaffold": {
       "required": [
         "list",
@@ -719,24 +917,6 @@
         "enabled"
       ]
     },
-    "app_bar_row": {
-      "required": [
-        "items"
-      ],
-      "optional": [
-        "overflow_icon",
-        "max_items"
-      ]
-    },
-    "app_bar_column": {
-      "required": [
-        "items"
-      ],
-      "optional": [
-        "overflow_icon",
-        "max_items"
-      ]
-    },
     "carousel": {
       "required": [
         "children"
@@ -747,15 +927,6 @@
         "item_spacing",
         "content_padding",
         "item_corner"
-      ]
-    },
-    "fab_menu": {
-      "required": [
-        "items"
-      ],
-      "optional": [
-        "icon",
-        "close_icon"
       ]
     },
     "button_group": {
@@ -779,6 +950,23 @@
       ]
     }
   },
+  "variant_schema": {
+    "required": [
+      "value",
+      "content"
+    ],
+    "optional": [],
+    "min_items": 2,
+    "max_items_limit": "max_variants_per_host",
+    "value_type": "identifier",
+    "content_type": "node",
+    "content_rules": {
+      "prohibit_stateful_nodes": true,
+      "prohibit_editors": true,
+      "prohibit_nested_variant_hosts": true,
+      "node_ids_remain_document_global": true
+    }
+  },
   "field_types": {
     "text": "string",
     "label": "string",
@@ -796,9 +984,12 @@
     "syntax": "identifier",
     "id": "identifier",
     "key": "identifier",
+    "semantics": "semantics-object",
     "document": "identifier",
     "keyboard": "enum",
     "children": "node-array",
+    "content": "node",
+    "variants": "variant-array",
     "items": "varies-per-node",
     "rows": "table-row-array",
     "spans": "rich-span-array",
@@ -1382,7 +1573,8 @@
       "dedupe",
       "ttl_s",
       "confirm",
-      "capture_fields"
+      "capture_fields",
+      "open_surface"
     ],
     "offline_policies": [
       "drop",
@@ -1401,13 +1593,30 @@
           "dedupe",
           "ttl_s",
           "confirm",
-          "capture_fields"
+          "capture_fields",
+          "open_surface"
         ]
       },
       "view.switch": {
         "required": [
           "builtin",
           "view"
+        ],
+        "optional": []
+      },
+      "variant.switch": {
+        "required": [
+          "builtin",
+          "id"
+        ],
+        "optional": [
+          "value"
+        ]
+      },
+      "surface.open": {
+        "required": [
+          "builtin",
+          "surface"
         ],
         "optional": []
       },
@@ -1496,7 +1705,8 @@
         "value",
         "index"
       ]
-    }
+    },
+    "open_surface_feature": "action.open_surface"
   },
   "methods": {
     "session.hello": {
@@ -2376,6 +2586,8 @@
       "max_json_depth": 64,
       "max_nodes_per_snapshot": 10000,
       "max_children_per_node": 10000,
+      "max_variants_per_host": 8,
+      "max_semantic_actions_per_node": 8,
       "max_identifier_bytes": 128,
       "max_request_id_bytes": 64,
       "max_method_bytes": 128,
@@ -2608,26 +2820,14 @@
   "theme_roles": [
     "primary",
     "on_primary",
-    "primary_container",
-    "on_primary_container",
     "secondary",
     "on_secondary",
-    "secondary_container",
-    "on_secondary_container",
-    "tertiary",
-    "on_tertiary",
-    "tertiary_container",
-    "on_tertiary_container",
     "error",
     "on_error",
-    "error_container",
-    "on_error_container",
     "background",
     "on_background",
     "surface",
     "on_surface",
-    "surface_variant",
-    "on_surface_variant",
     "outline",
     "success",
     "warning"
@@ -2687,7 +2887,8 @@
     "image.https",
     "image.data",
     "toolbar.*",
-    "editor.candidate_kind"
+    "editor.candidate_kind",
+    "action.open_surface"
   ],
   "candidate_schema": {
     "required": [

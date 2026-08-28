@@ -2,9 +2,9 @@
 
 Status: **Greenfield Draft**
 
-Protocol version: **2**
+Protocol version: **3**
 
-Document version: **2.0.0-draft**
+Document version: **3.1.0-draft**
 
 ## 1. Purpose and scope
 
@@ -20,9 +20,8 @@ host-language code. A Companion MUST NOT invent application behavior and MUST
 execute only operations defined by the negotiated EBP vocabulary.
 
 EBP is implementation-language and UI-toolkit agnostic. Conformance is
-determined by observable protocol behavior, not by internal architecture. An
-implementation MAY use Jetpack Compose, Android Views, SwiftUI, Flutter, a web
-toolkit, or any other technology capable of implementing this contract.
+determined by observable protocol behavior, never by an endpoint's language,
+framework, rendering engine, storage engine, or internal architecture.
 
 This document defines:
 
@@ -49,7 +48,7 @@ otherwise.
 
 ### 2.2 Artifact precedence
 
-This document is the normative authority for EBP 2. `contract.json` is a
+This document is the normative authority for EBP 3. `contract.json` is a
 machine-readable projection of the types and registries defined here. Goldens
 are conformance fixtures that witness particular normative rules.
 
@@ -76,6 +75,7 @@ canonical serialization.
 | **session** | One authenticated EBP association over one transport connection. |
 | **surface** | A named, revisioned, cacheable user-interface target. |
 | **node** | One element of a declarative surface tree. |
+| **variant host** | An optional stateful layout node containing a bounded ordered set of complete Emacs-authored Node alternatives, exactly one of which the Companion presents. |
 | **action descriptor** | Data attached to an interactive node that declares either a remote semantic action or a bounded Companion-local operation. |
 | **event** | One occurrence of a semantic action or subscribed platform trigger. |
 | **revision** | A non-negative safe integer that orders snapshots and tombstones for one surface. |
@@ -110,6 +110,13 @@ JSON-RPC exchange or a transport API.
 The boundary is therefore not “code versus no computation.” The boundary is
 application-defined executable behavior versus finite operations selected and
 parameterized by Emacs.
+
+Selecting one previously accepted `variant_host` alternative is finite
+Companion-local presentation state. The Companion MUST select only an exact
+authored alternative. It MUST NOT derive, transform, filter, parse application
+data, or otherwise construct an alternative. In particular, this operation
+does not authorize a Companion to implement Org visibility, folding, or any
+other application-specific semantics.
 
 ## 4. JSON data model
 
@@ -211,10 +218,20 @@ A receiver MUST enforce all of the following limits:
 | JSON nesting depth | 64 containers |
 | Nodes in one surface snapshot | 10,000 |
 | Children of one node | 10,000 |
+| Variants in one `variant_host` | 8 |
+| Accessibility custom actions in one Node `semantics.actions` array | 8 |
 | Identifier | 128 UTF-8 octets and the ASCII grammar above |
 | Method name | 128 UTF-8 octets and the Section 4.4 ASCII grammar |
 | Header section a sender may rely on | 128 octets |
 | Node nesting depth in one surface, dialog, or notification document | 20 levels |
+
+A `variant_host` MUST contain at least two and at most eight alternatives. Its
+host node, every `Variant.content` root, and every descendant in every selected
+or unselected alternative count toward `max_nodes_per_snapshot`,
+`max_node_depth`, and every applicable aggregate content limit. An unselected
+alternative receives no separate budget. The host's selected identifier is a
+non-password input value and therefore also spends `max_field_bytes` and the
+complete welcome `max_input_state_bytes` allowance.
 
 Every core endpoint MUST accept otherwise valid core messages within these
 limits. Module-specific storage and content limits MUST be reported in the
@@ -855,7 +872,7 @@ request:
 
 ```json
 {
-  "protocol": 2,
+  "protocol": 3,
   "client": {"name": "example-emacs-client", "version": "1.0.0"},
   "pairing_id": "89abcdef0123456789abcdef01234567",
   "client_nonce": "0123456789abcdef0123456789abcdef",
@@ -867,7 +884,7 @@ The params schema is:
 
 | Member | Type | Required | Constraint |
 |---|---|---:|---|
-| `protocol` | integer | yes | MUST equal `2` |
+| `protocol` | integer | yes | MUST equal `3` |
 | `client` | object | yes | Exactly `name` and `version`, each a non-empty string of at most 128 UTF-8 octets |
 | `pairing_id` | 32 lowercase hex characters | yes | Selects the pairing identity |
 | `client_nonce` | 32 lowercase hex characters | yes | Fresh CSPRNG nonce |
@@ -918,10 +935,10 @@ as printed and no trailing NUL or newline.
 
 ```text
 client_proof = lowercase-hex(
-  HMAC-SHA256(TOKEN, "EBP/2 client:" + PAIRING_ID + ":" + CNONCE + ":" + SNONCE))
+  HMAC-SHA256(TOKEN, "EBP/3 client:" + PAIRING_ID + ":" + CNONCE + ":" + SNONCE))
 
 server_proof = lowercase-hex(
-  HMAC-SHA256(TOKEN, "EBP/2 companion:" + PAIRING_ID + ":" + SNONCE + ":" + CNONCE))
+  HMAC-SHA256(TOKEN, "EBP/3 companion:" + PAIRING_ID + ":" + SNONCE + ":" + CNONCE))
 ```
 
 The following known-answer vector is normative:
@@ -931,8 +948,8 @@ pairing_token = AAECAwQFBgcICQoLDA0ODw
 PAIRING_ID    = 101112131415161718191a1b1c1d1e1f
 CNONCE        = 202122232425262728292a2b2c2d2e2f
 SNONCE        = 303132333435363738393a3b3c3d3e3f
-client_proof  = 03e270fd0af4566336283444b641a722b5828c190ebdbe3dc50c5be2c9c9fb43
-server_proof  = e9333d48cfc2780d708db4a9782705c5e1c988c7eedc2d1734051f2fb9be58ec
+client_proof  = a76f9e392582c990ef08858fe69740323499ab87566d9b4e6f99a246bdd024a6
+server_proof  = ca1c37bcb735442fb979127a07fc41d2a15ea0fcf58ae1ffa4bf06edc0bdfdcc
 ```
 
 A conforming proof implementation MUST reproduce both proof values exactly.
@@ -1039,18 +1056,20 @@ On successful `auth.response`, the Companion returns:
 {
   "server_proof": "<64 lowercase hexadecimal characters>",
   "server": {"name": "example-companion", "version": "1.0.0"},
-  "protocol": 2,
+  "protocol": 3,
   "granted": ["surfaces.dialog", "theme"],
   "surface_profiles": {
     "app": {
       "node_types": ["text", "row", "column", "box", "spacer", "divider", "button", "text_input"],
       "builtins": ["view.switch", "companion.settings.open"],
-      "features": []
+      "features": [],
+      "extensions": []
     },
     "dialog": {
       "node_types": ["text", "row", "column", "button", "text_input"],
       "builtins": ["dialog.submit", "dialog.dismiss"],
-      "features": []
+      "features": [],
+      "extensions": []
     }
   },
   "surfaces": {
@@ -1084,7 +1103,7 @@ The welcome members have these schemas:
 | Member | Normative shape |
 |---|---|
 | `server_proof` | 64 lowercase hexadecimal HMAC-SHA256 proof |
-| `protocol` | integer `2` |
+| `protocol` | integer `3` |
 | `server` | object containing exactly `name` and `version`, each a non-empty string of at most 128 UTF-8 octets |
 | `granted` | array of distinct capability identifiers |
 | `surface_profiles` | target-profile map defined below |
@@ -1106,6 +1125,12 @@ NOT have input state. `queued_events` MUST equal the count visible to the next
 `queue.replay`; it MUST NOT include expired records that the Companion has
 already identified for deletion.
 
+A retained `variant_host` selection uses its ordinary stateful-node ID and
+identifier value in `input_state`; there is no separate variant-state welcome
+member. The selection is merged at the synchronization barrier and survives
+reconnection and Companion process restart under the same eligible
+non-password input-draft rules as every other value in this member.
+
 For a present surface in the `app` namespace whose latest accepted snapshot is
 multi-view, the `surfaces` entry MUST also carry `current_view`, naming the
 view the Companion is presently showing. Without it the navigation channel is
@@ -1124,11 +1149,12 @@ was granted.
 `surface_profiles` maps presentation targets to positive-knowledge profiles.
 `app` is REQUIRED. `notification`, `widget`, `tile`, and `dialog` are REQUIRED
 only when the corresponding surface capability was granted. Each profile MUST contain
-distinct `node_types`, `builtins`, and `features` arrays and MUST list exactly
-what the Companion will honor on that target during this session. Emacs MUST
-gate every emitted node, builtin, and constraining feature against the target
-profile and MUST NOT interpret a missing profile or list as support for
-everything. Section 22.4 registers the constraining-feature vocabulary.
+distinct `node_types`, `builtins`, `features`, and `extensions` arrays and MUST
+list exactly what the Companion will honor on that target during this session.
+Emacs MUST gate every emitted node, builtin, constraining feature, and renderer
+extension against the target profile and MUST NOT interpret a missing profile
+or list as support for everything. Section 22.4 registers the
+constraining-feature vocabulary; Section 16.2.1 registers renderer extensions.
 
 The applicable target is `app` for `app:*`, `notification` for
 `notification:*`, `widget` for `widget:*`, `tile` for `tile:*`, and `dialog` for
@@ -1145,7 +1171,8 @@ be inferred in another.
 After verifying the welcome, Emacs MUST perform these steps in order:
 
 1. absorb the surface revision and tombstone floors;
-2. merge `input_state` into its UI-state store;
+2. merge `input_state`, including retained `variant_host` selections, into its
+   UI-state store;
 3. send required surface updates or removals using revisions above the reported
    floors, reflecting retained input drafts where applicable;
 4. call `queue.replay` and wait for it to conclude; and
@@ -1200,6 +1227,10 @@ Cached surfaces,
 surface revision floors, tombstones, eligible input drafts, trigger and reminder
 registrations, queued events, and event-delivery IDs MUST survive according to
 their module rules.
+
+An eligible `variant_host` selection is an input draft for this purpose. It
+MUST NOT be stored in a parallel navigation or presentation-state channel that
+could survive acknowledgement, reset, host removal, or pairing revocation.
 
 When a `READY` connection closes, the Companion MUST persist the disconnection
 time before accepting new offline interactions. If the Companion itself
@@ -1258,9 +1289,9 @@ the registry.
 
 ## 12. Versioning and compatibility
 
-`protocol` is the EBP wire major. This document defines major `2`. A Companion
+`protocol` is the EBP wire major. This document defines major `3`. A Companion
 MUST reject another major with `1202 protocol-version` and SHOULD include
-`data.supported: [2]`. A sender MUST NOT infer wire compatibility from an
+`data.supported: [3]`. A sender MUST NOT infer wire compatibility from an
 implementation version, document version, or `contract.json` format version.
 
 Within one protocol major, compatible growth MUST use positive capability,
@@ -1383,6 +1414,12 @@ visible state. If the content is invalid, it MUST return
 `1201 content-invalid`, MUST leave the previous snapshot unchanged, and SHOULD name
 the failing object path in `error.data.path`.
 
+Every alternative of every `variant_host` is part of this one complete
+snapshot and is published atomically at this revision. Alternatives do not
+carry independent revisions and MUST NOT be admitted, replaced, or rejected
+individually. Selection of an already accepted alternative does not mutate or
+advance the surface revision.
+
 If `revision` is greater than the stored snapshot or tombstone revision, the
 Companion MUST persist and atomically present the snapshot, then return:
 
@@ -1486,6 +1523,34 @@ clears any current view the Companion retained for that surface. The next
 accepted multi-view snapshot for that surface that omits `current_view`
 therefore selects `initial_view`.
 
+#### Host-shell navigation is distinct from multi-view navigation
+
+A Companion MAY expose multiple present `app:*` surfaces through its own
+receiver-local application shell, catalog, tabs, windows, or navigation back
+stack. That host-shell selection is not part of a SurfaceSpec and is distinct
+from the `current_view` retained inside one multi-view surface.
+
+Accepting a `surface.update` or `surface.remove` MUST NOT by itself be
+interpreted as a request to navigate the receiver's host shell. In particular,
+an update to a present but unselected surface updates its cached snapshot
+without taking the user away from the surface or receiver-owned screen they
+selected. A Companion MAY restore a receiver-local selection, present a
+catalog, or choose a default when no valid selection exists. If the selected
+surface is removed, it MUST cease presenting that surface and choose a valid
+receiver-local fallback without synthesizing an EBP action.
+
+Entering, leaving, or returning to a host-shell destination MUST NOT change a
+surface's retained `current_view` and MUST NOT emit `view.switched`. Only the
+`view.switch` builtin, or an update carrying `current_view`, changes that
+in-surface selection under the rules above. Receiver navigation history MUST
+retain only receiver-owned destination data such as pairing and surface
+identifiers; a SurfaceSpec remains governed by the Section 13.5 cache rather
+than being copied into a platform navigation key.
+
+An occurrence of the optional `surface.open` builtin is an explicit user
+request to change this receiver-local selection. It is not an exception to the
+rule above: accepting the target surface's update still does not navigate.
+
 ### 13.5 Cached and stale presentation
 
 The Companion MUST persist the latest accepted snapshot for each present
@@ -1542,6 +1607,8 @@ Value-schema compatibility is exact:
   remain legal under the new `options` and `allow_add` rules;
 - `slider` requires the retained number to remain inside the new continuous
   range or equal one of the new discrete `values`; and
+- `variant_host` requires an identifier that remains one of the new host's
+  authored `Variant.value` identifiers; and
 - a local `editor` draft requires `publish_state: true` and no `document` in
   both snapshots. A synchronized editor never participates in draft
   reconciliation.
@@ -1550,6 +1617,14 @@ Anything else is incompatible. The Companion MUST erase an incompatible draft
 and seed the node from the newly authored value or that node's default, without
 emitting `state.changed` or a user action. A transition to password input MUST
 use Section 14.6's secret-erasure rules.
+
+For a `variant_host`, an authored value equal to the retained selection
+acknowledges and clears the draft under the first clearing rule above. A
+different authored value does not overwrite a compatible retained selection.
+Removal of the selected alternative makes the draft incompatible, clears it,
+and selects the new authored value without emitting `state.changed` or an
+action. Host removal, type change, `reset_input_ids`, and surface tombstoning
+retain their ordinary clearing behavior.
 
 A local `editor` node's live text is preserved across a same-presentation-identity
 snapshot regardless of `publish_state`: the authored `value` seeds only a new
@@ -1587,7 +1662,8 @@ A remote ActionDescriptor has this shape:
   "when_offline": "queue",
   "dedupe": "heading:123:todo",
   "ttl_s": 86400,
-  "confirm": "Mark this item done?"
+  "confirm": "Mark this item done?",
+  "open_surface": "app:glasspane"
 }
 ```
 
@@ -1600,6 +1676,7 @@ A remote ActionDescriptor has this shape:
 | `ttl_s` | integer `1..604800` | conditionally | — | Queue lifetime, required for `queue` and `wake` |
 | `confirm` | non-empty string \| confirm object | no | — | Confirmation shown before an event is created (object form below) |
 | `capture_fields` | array of distinct widget IDs | no | `[]` | Stateful values to capture atomically in `event.action.fields` |
+| `open_surface` | app Surface ID | no | — | Present that cached surface locally for the same user occurrence |
 
 An action name MUST contain at least one dot and MUST be registered in an
 explicit Emacs-side allowlist. `args` are untrusted data and MUST be validated
@@ -1617,6 +1694,22 @@ Companion that receives a descriptor whose `when_offline` is `wake` in a session
 that did not grant `offline.wake` MUST reject the containing document with
 `1201 content-invalid`, and MUST NOT signal any wake target — even one configured
 in a prior session — for such a descriptor.
+
+`open_surface` is a member-gated receiver-local presentation adjunct. Emacs
+MUST emit it only for an `app` target whose profile advertises
+`action.open_surface` (Section 22.4), and the Companion MUST reject it in any
+other target context. Its value MUST be an `app:*` Surface ID. After any
+authored confirmation is accepted and the occurrence passes local size and
+durable-admission checks, the Companion MUST select the named surface through
+the same host-shell behavior as the `surface.open` builtin. A `drop` occurrence
+performs this local selection even without a `READY` session. The remote
+`event.action` is still independently delivered according to `when_offline`;
+the adjunct neither replaces it nor creates a second event.
+
+Target presence is checked only when the occurrence executes. An absent target
+is a safe local no-op, so accepting one surface never depends on the order in
+which another surface was cached. Local selection MUST NOT change either
+surface's `current_view` or emit `view.switched`.
 
 `capture_fields` is valid only for a descriptor inside a surface or dialog
 containing every named stateful node. Its length MUST NOT exceed
@@ -1675,27 +1768,60 @@ Emacs MUST NOT emit a builtin absent from the applicable target's
 | Builtin | Required members | Behavior |
 |---|---|---|
 | `view.switch` | `view` | Switch the current multi-view surface locally; if `READY`, report remote action `view.switched` with `args.view` and `when_offline: drop`. |
+| `variant.switch` | `id`; optional `value` | Select an alternative of the named `variant_host`. With `value`, select that exact authored value; without it, select the next authored alternative and wrap after the last. |
+| `surface.open` | `surface` | Select the named present `app:*` surface in the Companion's receiver-local host shell. This MUST NOT change any surface's `current_view` or emit `view.switched`. |
 | `clipboard.copy` | `text` | Copy text through the platform clipboard. The descriptor is necessarily part of its cached document; the Companion MUST NOT create an additional private copy or log the text. Emacs SHOULD NOT author a secret here. |
 | `share.send` | `text`; optional `title` | Open the platform share UI. |
-| `companion.settings.open` | none | Open the Companion's own pairing, permissions, offline-state, and diagnostics UI. |
+| `companion.settings.open` | none | Open the Companion's own pairing, permissions, offline-state, and diagnostics UI. This is receiver-local host-shell navigation: it MUST NOT change any surface's `current_view` or emit `view.switched`. |
 | `trigger.fire` | `id` | Fire the named `manual` trigger through Section 21's normal pipeline. |
 | `dialog.submit` | optional `value` and `capture_fields` | Complete the containing `dialog.show` request as submitted. `capture_fields` obeys Sections 14.1 and 14.6. |
 | `dialog.dismiss` | none | Complete the containing `dialog.show` request as dismissed. |
 
-Builtin parameter objects are closed and use these exact types. `view` and `id`
-are identifiers; `text`, `title`, and string-valued `value` are strings;
+Builtin parameter objects are closed and use these exact types. `view`, `id`,
+and `variant.switch.value` are identifiers; `surface` is an `app:*` Surface ID;
+`text`, `title`, and `dialog.submit`'s string-valued `value` are strings;
 `capture_fields` is the ID array from Section 14.1; and
 `dialog.submit.value`, when not a string, MAY be any non-secret JSON value that
 fits the frame limits. `view.switch` is valid only inside a multi-view `app:*`
-surface and `view` MUST name one of that snapshot's views. `dialog.submit` and
+surface and `view` MUST name one of that snapshot's views. `variant.switch` is
+valid only inside an `app:*` SurfaceSpec containing exactly one `variant_host`
+with that node ID, and an explicit `value` MUST name one of that host's
+alternatives. The reference MUST be resolved after the entire document is
+validated because the descriptor may precede its host in tree order. A missing,
+duplicated, wrong-type, or wrong-value target makes the containing document
+invalid with `1201 content-invalid`. `dialog.submit` and
 `dialog.dismiss` are valid only inside their containing outstanding dialog.
-Every other builtin is valid only in a target profile that advertises it. An
-unexpected parameter or invalid context MUST reject the containing document.
+`surface.open` is valid only in the `app` profile. Its target need not be
+present when the containing snapshot is accepted; if it is not present when
+the action occurs, the occurrence is a safe no-op. Every other builtin is valid
+only in a target profile that advertises it. An unexpected parameter or invalid
+context MUST reject the containing document.
+
+At occurrence time, an explicit `variant.switch` whose `value` is already
+selected is a no-op. An omitted value advances in authored array order and
+wraps. If a newer accepted snapshot removed or retyped the target before a
+previously presented occurrence executes, that occurrence is a safe no-op.
+Every successful selection mutation follows Section 14.6; it emits no
+application action and does not advance the surface revision.
+
+Before presenting a changed selection, the Companion MUST admit and durably
+commit the new identifier to the host's ordinary input-draft cell, including
+the `max_field_bytes` and `max_input_state_bytes` checks. If validation, size,
+or durable storage admission fails, it MUST preserve the preceding selection,
+MUST NOT emit `state.changed` or dispatch content from the requested
+alternative, and SHOULD show a local diagnostic. A crash at this boundary
+therefore restores either the complete preceding selection or the complete new
+selection, never a visible value absent from the next welcome.
 
 `view.switch` and `companion.settings.open` are REQUIRED in the `app` profile.
 `dialog.submit` and `dialog.dismiss` are REQUIRED in the `dialog` profile.
-`clipboard.copy`, `share.send`, and `trigger.fire` are OPTIONAL and MUST be
-positively advertised in each profile where they are usable; `trigger.fire`
+`variant.switch`, `surface.open`, `clipboard.copy`, `share.send`, and
+`trigger.fire` are OPTIONAL and MUST be positively advertised in each profile
+where they are usable. A Companion that advertises `variant_host` in the `app`
+profile MUST also advertise `variant.switch` there. Emacs MUST emit a
+`variant_host` only when both names are advertised; otherwise it MUST retain
+its existing remote `surface.update` behavior for application-authored
+presentation changes. `trigger.fire`
 additionally requires the `triggers` capability and a registered `manual`
 trigger. Builtins are the entire Companion-local control-flow vocabulary. A
 Companion MUST NOT interpret arbitrary builtin names as platform commands.
@@ -1872,10 +1998,12 @@ fact; the field records what the user actually saw.
 ```
 
 `surface`, `revision_seen`, `id`, and `value` are REQUIRED. Stateful nodes are
-`text_input`, `checkbox`, `switch`, `enum_list`, and `slider`, plus an `editor`
-whose `publish_state` is `true`. Widget IDs MUST be unique among stateful nodes
-in one surface snapshot. A Companion MUST send state changes in user-observed
-order while `READY`.
+`text_input`, `checkbox`, `switch`, `enum_list`, `slider`, `search_bar`,
+`dropdown`, `segmented_button`, and `variant_host`, plus an `editor` whose
+`publish_state` is `true`, and a `button` or `icon_button` when `checked` is
+present. A button without `checked` remains a stateless action node. Widget IDs
+MUST be unique among stateful nodes in one surface snapshot. A Companion MUST
+send state changes in user-observed order while `READY`.
 
 A `text_input` MUST publish after each user edit, subject to a debounce no
 longer than 500 milliseconds.
@@ -1884,6 +2012,15 @@ settled selection; and a slider after the user commits a gesture. An editor
 MUST publish after each user text change only when `publish_state` is `true`.
 When a node also has an `on_change` action, its `state.changed` notification
 MUST precede that action and both MUST carry the same logical value.
+
+A `variant_host` MUST publish its newly selected identifier after every
+successful `variant.switch` mutation. While `READY`, that notification MUST be
+ordered before any later action dispatched from the newly selected content.
+While disconnected or `SYNCING`, the selected identifier remains the host's
+latest input-state value and follows the ordinary welcome and on-`READY` flush
+rules. The notification carries the revision of the accepted snapshot that
+authored the selected alternative; a local selection does not create a new
+revision.
 
 #### 14.6.1 `caret`
 
@@ -2130,7 +2267,10 @@ A node's presentation identity is its `key` when present, otherwise its `id`
 when present, otherwise its structural tree path. A `key` MUST be unique among
 siblings. Every authored node `id` MUST be unique across the complete surface
 or dialog document, including input-stateful, collapsible, tabs, and editor
-nodes. The discriminator `t` is part of the identity: reusing a key
+nodes and every selected or unselected `variant_host` alternative. Alternatives
+are not subdocuments and do not create ID namespaces; an author that repeats a
+conceptual control in several alternatives MUST namespace those node IDs. The
+discriminator `t` is part of the identity: reusing a key
 or ID with a different node type creates a new identity and MUST clear retained
 presentation state. Tree-path identity is unstable under insertion;
 Emacs SHOULD supply a `key` or `id` for any node whose local presentation state
@@ -2152,6 +2292,13 @@ unrecognized value under Section 12 rule 6 (such as `text.style` falling back to
 `body` or `dialog.style` to `dialog`), which is applied instead of rejection. A
 receiver MUST NOT coerce, clamp, or silently drop an out-of-domain member in
 place of this rejection.
+
+Complete validation includes every selected and unselected `variant_host`
+alternative. Each alternative's nodes, features, action descriptors, deferred
+references, identifiers, depths, child counts, and aggregate content counts
+MUST be validated against the same applicable surface profile and limits before
+the snapshot is accepted. Selection MUST NOT defer validation or allocation
+bounds until a later user gesture.
 
 ### 16.2 Required core and unknown nodes
 
@@ -2182,6 +2329,26 @@ per-member validation of Section 16.1 applies only to advertised and Core Node
 Set types. A validator keyed on the full contract vocabulary MUST therefore
 gate its per-type rules on the advertised `node_types` set.
 
+#### 16.2.1 Renderer extensions
+
+EBP node semantics are independent of the implementation used to present them.
+A renderer extension is a positively advertised, namespaced set of optional
+node types supplied by an independently versioned presentation implementation.
+Extension identifiers MUST obey Section 4.4 and MUST contain a dot.
+
+An extension node type MUST appear in the target profile's `node_types` array,
+and its extension identifier MUST appear in that target's `extensions` array.
+Emacs MUST gate an application-declared extension requirement on the latter
+and every emitted node on the former. Absence of either makes that use
+unsupported under Section 16.2.
+
+EBP deliberately does not register extension identifiers, extension-owned
+node schemas, or node-to-extension ownership. Those contracts belong to the
+presentation implementation that defines them and are injected into an
+endpoint at its implementation boundary. An endpoint MUST NOT infer ownership
+from a node-name prefix. `contract.json` therefore projects only EBP's own node
+vocabulary; it is not a registry of downstream renderers or design systems.
+
 ### 16.3 Unknown fields
 
 A Companion MUST ignore an unknown optional node field. Emacs MUST obey the
@@ -2196,15 +2363,17 @@ identity among toolkits or platforms. A Companion MAY use native platform
 appearance, typography, animation, and input idioms where the declared
 semantics remain observable.
 
-Interactive nodes MUST expose an accessible label, derived as the first
-present of: `content_description`, a textual `label` member, the icon
-identifier's name, and the node type. A Companion MUST NOT reject a node for
-lacking an accessibility member. Emacs SHOULD supply `content_description` on
-every interactive node whose only visual content is an icon; the icon
-identifier is a fallback of last resort, not a substitute. Text MUST be treated as
-plain text unless its field explicitly defines structured rich text. A
-Companion MUST NOT interpret ordinary text as HTML, Markdown, Elisp, or another
-executable or markup language.
+Interactive nodes MUST expose an accessible name, derived as the first
+non-empty value of: `semantics.name`, legacy `content_description`, a textual
+`label` member, the icon identifier's name, the node type, and finally the
+literal string `node`. A Companion MUST NOT reject a node for lacking an
+accessibility member. Emacs SHOULD supply `semantics.name` on every interactive
+node whose visual content does not already provide an unambiguous name;
+`content_description` remains valid for compatibility. The icon identifier and
+node type are fallbacks of last resort, not substitutes for an authored name.
+Text MUST be treated as plain text unless its field explicitly defines
+structured rich text. A Companion MUST NOT interpret ordinary text as HTML,
+Markdown, Elisp, or another executable or markup language.
 
 ### 16.5 Universal node attributes
 
@@ -2230,6 +2399,7 @@ density-independent units (`dp`) unless stated otherwise.
 | `alpha` | number `0..1` | `1` | Opacity; MUST NOT be used to hide a load-bearing control |
 | `clip` | boolean | `false` | Clip descendants to the corner shape |
 | `align_self` | `start` \| `center` \| `end` \| `stretch` | — | Override parent cross-axis alignment |
+| `semantics` | Semantics object | — | Optional toolkit-neutral accessibility metadata and bounded custom actions (§16.5.1) |
 
 A Pad object MAY contain `start`, `top`, `end`, `bottom`, `horizontal`, and
 `vertical`. A side-specific value wins over its axis shorthand. A Corner object
@@ -2237,6 +2407,76 @@ MAY contain `top_start`, `top_end`, `bottom_start`, and `bottom_end`.
 
 The Companion SHOULD apply visual operations in this order: corner shape,
 clipping, background, then border.
+
+#### 16.5.1 Semantics envelope
+
+`semantics` is an optional object on every Node. It adds accessibility meaning
+without replacing the Node's authored structure, state, or ordinary actions.
+Its recognized members are:
+
+| Member | Type | Meaning |
+|---|---|---|
+| `name` | non-empty plain string | Highest-precedence accessible name |
+| `description` | non-empty plain string | Additional accessible description |
+| `state_description` | non-empty plain string | Authored state wording that supplements, but does not replace, derived state |
+| `error` | non-empty plain string | Current validation or content error announced for this Node |
+| `pane_title` | non-empty plain string | Title announced when this Node becomes the active pane |
+| `heading_level` | integer `1..6` | Heading importance; a receiver unable to expose a numeric level MUST still expose the Node as a heading |
+| `live_region` | `polite` \| `assertive` | Announcement policy for changed content |
+| `collection` | SemanticCollection | Authored row and column bounds for descendant collection items |
+| `collection_item` | SemanticCollectionItem | This Node's position in its nearest authored collection ancestor |
+| `traversal_group` | boolean | Whether descendants form a traversal-index scope |
+| `traversal_index` | finite number | Relative traversal order within the nearest authored traversal group, or the document root when none is authored |
+| `actions` | array of SemanticAction | Additional accessibility-only ways to invoke ordinary ActionDescriptors |
+
+A SemanticCollection is `{row_count, column_count}`. `row_count` is a
+non-negative integer and `column_count` is a positive integer. A
+SemanticCollectionItem is `{row_index, row_span, column_index, column_span}`;
+indices are non-negative integers and spans are positive integers. A
+`collection_item` MUST have an authored `collection` ancestor, and both
+`row_index + row_span <= row_count` and
+`column_index + column_span <= column_count` MUST hold for the nearest such
+ancestor. A nested collection begins a new scope.
+
+Traversal indices affect only accessibility traversal; they MUST NOT reorder
+the document or its rendering. Equal indices retain document order. A nested
+`traversal_group: true` begins a new scope. `traversal_group: false` explicitly
+leaves a Node out of group ownership and MUST NOT merge or hide descendants.
+
+A SemanticAction is the object `{label, on_action}`. `label` is a non-empty
+plain string and `on_action` is an ordinary ActionDescriptor. Labels in one
+`semantics.actions` array MUST be distinct, and the array MUST contain at most
+eight entries. The descriptor receives the same builtin, target-profile,
+feature, capture-field, offline-policy, confirmation, durability, and byte
+budget validation as a descriptor on a visible interaction hook. Activating a
+SemanticAction MUST enter the same ordinary action pipeline exactly once. A
+platform accessibility callback reports success after handing the already
+admitted descriptor to that pipeline; it does not wait for remote completion.
+
+Receivers MUST ignore unknown members of the Semantics object and its nested
+objects, preserving compatible growth under Section 12. An authoring helper
+targeting this document version SHOULD reject an unknown member so misspelled
+metadata does not silently disappear.
+
+The Node type and its existing state members remain authoritative. Version 1
+of the Semantics object has no role override and no checked, selected,
+expanded, editable, enabled, or progress override. Receivers derive roles and
+state from the existing Node vocabulary, including:
+
+- `section_header` is a heading;
+- `progress` exposes a determinate range when `value` is present and an
+  indeterminate range otherwise;
+- `collapsible` exposes expanded or collapsed state;
+- input, toggle, selection, tab, image, slider, progress, and button roles are
+  derived from their Node types; and
+- each labeled `swipe_start` or `swipe_end` side is also exposed as an
+  accessibility custom action invoking that side's `on_trigger` descriptor.
+
+Semantics MUST NOT clear, hide, merge, or replace descendant semantics; weaken
+an existing `enabled` or `read_only` restriction; contradict a derived role or
+state; or provide the only route to a load-bearing application action. An
+endpoint that ignores the entire optional object therefore remains functionally
+correct, although it provides a less complete accessibility experience.
 
 ### 16.6 Colors
 
@@ -2378,7 +2618,8 @@ disconnected a Companion MAY render a cached image, or MUST otherwise render
 | `flow_row` | `children: Node[]` | `spacing`, `run_spacing`, `align`, `arrange`. Children wrap to later runs. |
 | `box` | `children: Node[]` | `alignment`, `on_tap`. Children stack in array order from back to front. |
 | `surface` | `children: Node[]` | `color`, `shape`, `elevation`. This node is a visual container and is distinct from a protocol Surface. |
-| `lazy_column` | `children: Node[]` | `spacing`, `content_padding`. The Companion MAY compose only visible children but MUST preserve array order. |
+| `lazy_column` | `children: Node[]` | `spacing`, `content_padding`. The Companion MAY instantiate only visible children but MUST preserve array order. |
+| `variant_host` | `id: identifier`, `value: identifier`, `variants: Variant[]` | Present the exact alternative whose `Variant.value` equals the host's current logical value. |
 | `spacer` | — | `width`, `height`, `weight` |
 | `divider` | — | `color`, `thickness` |
 | `card` | `children: Node[]` | `on_tap`, `on_long_tap`, `swipe_start`, `swipe_end`. |
@@ -2386,6 +2627,29 @@ disconnected a Companion MAY render a cached image, or MUST otherwise render
 | `reorderable_list` | `items: Node[]` | `on_reorder`. Every item MUST have a unique `key` or `id`; otherwise the node is invalid. |
 | `tabs` | `items: TabItem[]`, `children: Node[]` | `initial`, `scrollable`, `pager_only`, `on_change`, `id`. Arrays MUST have equal non-zero length. |
 | `table` | `rows: TableRow[]` | `aligns`, `on_add_row`, `on_add_col`. Wide tables MAY scroll horizontally. |
+
+A `Variant` is the closed object `{value: identifier, content: Node}`. A
+`variant_host` MUST contain two through eight variants; their values MUST be
+distinct, and the host's authored `value` MUST name one of them. Array order is
+semantically relevant only to an omitted-value `variant.switch`, which advances
+to the next entry and wraps. Variant values are opaque: a Companion MUST use
+them only for exact equality and ordered selection and MUST NOT infer
+application meaning from their spelling.
+
+In this initial form, no `Variant.content` subtree may contain a Section 14.6
+stateful node, any `editor` (including a synchronized or
+`publish_state: false` editor), or a nested `variant_host`. Pure presentation
+state such as `collapsible` expansion and `tabs` selection is allowed. These
+restrictions apply recursively through every nested field and fallback subtree.
+All node IDs in all alternatives remain in the containing document's single
+Section 16.1 namespace.
+
+Only the selected content is presented, rendered or drawn, measured for
+layout, exposed to accessibility, eligible for focus, or permitted to dispatch
+an action. Every alternative nevertheless undergoes complete admission
+validation and consumes the aggregate limits described in Sections 4.5 and
+16.1. Changing selection MUST preserve the already accepted authored Node
+unchanged; it MUST NOT ask Emacs to render or serialize a new alternative.
 
 `spacing`, `run_spacing`, `content_padding`, `elevation`, and `thickness` are
 non-negative `dp` values. For `row`, `column`, and `flow_row`, `arrange` is one
@@ -2454,10 +2718,9 @@ node. `editor` uses `read_only` for editing permission in addition to
 | `button` | `label: string`, `on_tap: ActionDescriptor` | `icon`, `variant`, `enabled`. `variant`: `filled` (default), `tonal`, `outlined`, or `text`. |
 | `icon_button` | `icon: identifier`, `on_tap: ActionDescriptor` | `content_description`, `badge`, `enabled` |
 | `chip` | `label: string` | `on_tap`, `selected`, `icon`, `enabled` |
-| `assist_chip` | `label: string` | `on_tap`, `icon`, `enabled` |
 | `menu` | `items: MenuItem[]` | `icon`, `enabled` |
 | `text_input` | `id: identifier` | `value`, `hint`, `label`, `on_change`, `on_submit`, `single_line`, `min_lines`, `max_lines`, `monospace`, `syntax`, `password`, `keyboard`, `autofocus`, `clear_on_submit`, `enabled` |
-| `editor` | `id: identifier` | `document`, `value`, `on_save`, `on_enter`, `read_only`, `syntax`, `line_numbers`, `complete`, `chromeless`, `publish_state`, `autofocus`, `toolbar`, `enabled` |
+| `editor` | `id: identifier` | `document`, `value`, `on_save`, `on_enter`, `single_line`, `min_lines`, `max_lines`, `read_only`, `syntax`, `line_numbers`, `complete`, `chromeless`, `publish_state`, `autofocus`, `toolbar`, `enabled` |
 | `checkbox` | `id: identifier` | `checked`, `label`, `on_change`, `enabled` |
 | `switch` | `id: identifier` | `checked`, `label`, `on_change`, `enabled` |
 | `enum_list` | `id: identifier`, `options: EnumOption[]` | `value`, `multi_select`, `allow_add`, `on_change`, `enabled` |
@@ -2485,9 +2748,12 @@ input node.
 `single_line`, `monospace`, `password`, `autofocus`, `clear_on_submit`,
 `line_numbers`, `complete`, `chromeless`, `publish_state`, and `read_only`
 default to `false`. `min_lines` and `max_lines` MUST be positive integers, and
-`min_lines` MUST NOT exceed `max_lines`. `min_lines` defaults to `1`;
-`max_lines` defaults to `1` when `single_line` is true and otherwise defaults to
-`min_lines`. `single_line: true` requires both line counts to equal `1`.
+`min_lines` MUST NOT exceed `max_lines`. For `text_input`, `min_lines` defaults
+to `1` and `max_lines` defaults to `1` when `single_line` is true and otherwise
+to `min_lines`. For `editor`, `min_lines` defaults to `3` and `max_lines` is
+unbounded unless authored; `single_line: true` instead defaults both to `1`.
+These three line-control members apply to both node types. `single_line: true`
+requires both line counts to equal `1`.
 
 `single_line: true` prohibits U+000A in the node's value entirely. An authored
 `value` containing U+000A is invalid content and MUST be rejected with
@@ -2524,8 +2790,8 @@ while disconnected, the cleared value appears in the next welcome
 `input_state`. `clear_on_submit: true` is invalid when `on_submit` is a builtin.
 
 `on_enter` causes the software-input Enter action to dispatch the full editor
-value rather than insert a newline. A hardware newline or an explicit toolbar
-snippet MAY still insert a newline.
+value rather than insert a newline. Unless `single_line` is true, a hardware
+newline or an explicit toolbar snippet MAY still insert a newline.
 
 An `editor` without `document` is a local input node and does not participate
 in Section 19. An `editor` with `document` MUST be emitted only when
@@ -2901,11 +3167,12 @@ whose optional members are `fg`, `bg`, `font_weight`, `italic`, and
 exercising the complete `theme_roles` set and at least three distinct syntax
 roles.
 
-Standard roles include `primary`, `on_primary`, `primary_container`,
-`on_primary_container`, parallel `secondary`, `tertiary`, and `error` roles,
-plus `background`, `on_background`, `surface`, `on_surface`,
-`surface_variant`, `on_surface_variant`, `outline`, `success`, and `warning`.
-Unknown roles MUST be ignored.
+Standard roles are `primary`, `on_primary`, `secondary`, `on_secondary`,
+`error`, `on_error`, `background`, `on_background`, `surface`, `on_surface`,
+`outline`, `success`, and `warning`. Unknown roles MUST be ignored. A
+presentation implementation MAY derive additional local roles, ramps,
+typography, shapes, and elevations from these values, but those derived tokens
+are not EBP names and MUST NOT be accepted as `colors` members.
 
 ### 18.5 Notification metadata and actions
 
@@ -3531,8 +3798,10 @@ unauthorized operation.
 
 The Companion reports its window geometry with the `window.changed`
 notification: `{width_dp, height_dp, width_class, height_class}`, the classes
-drawn from `enums."window.size_class"` (compact, medium, expanded) at the
-Material breakpoints (width: 600/840 dp; height: 480/900 dp). It MUST be sent
+drawn from `enums."window.size_class"` (compact, medium, expanded) at EBP's
+protocol-defined breakpoints (width: 600/840 dp; height: 480/900 dp). These
+numbers describe interoperable presentation advice and do not select or imply
+a design system. The notification MUST be sent
 once after authentication and again whenever the geometry changes (rotation,
 fold, resize), and MUST NOT be re-sent for an unchanged geometry. The same
 object is mirrored as the `window` member of the `auth.response` welcome when
@@ -4233,6 +4502,7 @@ absent.
 | `image.data` | an `image` whose `url` carries a `data:image/*` scheme (Section 17.2) | omit the `image` node |
 | `toolbar.<identifier>` | an `editor.toolbar` naming a registered toolbar identifier (Section 17.7) | omit `toolbar`, or supply an inline ToolbarItem array |
 | `editor.candidate_kind` | a Section 19.3 completion candidate carrying `kind` | omit the `kind` member from every candidate |
+| `action.open_surface` | a remote ActionDescriptor carrying `open_surface` (Section 14.1) | omit the `open_surface` member |
 
 A feature name is a Section 4.4 identifier. A receiver MUST ignore an
 unrecognized `features` entry. A new constraining or member-gating feature
@@ -4285,6 +4555,13 @@ An implementation MUST NOT:
 A barcode, QR code, or NFC tag MAY be reported as plain action data. Automatic
 execution of its contents is outside EBP and MUST require an explicit,
 separately specified user trust policy.
+
+A `variant_host` identifier or value is likewise inert data, not a command,
+expression, predicate, query, resource address, or application-state key. A
+`variant.switch` may perform only bounded exact lookup within the already
+accepted host and select one already accepted Node. It MUST perform no ambient
+I/O and MUST NOT evaluate, parse, or transform the selected identifier or
+content.
 
 Where an implementation relies on the separate explicit trust decision above to
 admit text that the host would otherwise interpret, that decision MUST be taken
@@ -4349,6 +4626,11 @@ queue clearing. This deletion rule does not remove the minimal EventId receipt
 that Emacs MUST retain for the deduplication period in Section 14.4; that receipt
 MUST NOT retain the event payload or captured fields.
 
+Retained `variant_host` selections are input snapshots under this rule. They
+MUST be scoped to the pairing identity and erased on acknowledgement, reset,
+host removal, surface tombstoning, or pairing revocation as Sections 9.1 and
+13.6 require.
+
 ### 23.4 Replay and stale state
 
 Authentication nonces prevent reuse of an old handshake proof on a new
@@ -4366,6 +4648,12 @@ resources. They MUST bound decoded images, base64 payloads, canvas operations,
 rich-text spans, table cells, chart points, trigger registrations, reminders,
 editor sessions, and outstanding dialogs. They MUST reject excessive content
 atomically and MUST NOT partially execute a rejected object.
+
+The selected state of a `variant_host` MUST NOT be used to postpone validation
+or accounting of another alternative. Every selected and unselected branch is
+decoded and validated before snapshot admission and spends all applicable
+node, depth, child, span, table, chart, canvas, image, feature, and action
+budgets of the one containing document.
 
 Decoding MUST NOT let a peer's choice of names grow an unbounded
 process-lifetime table. Where a receiver's decoder maps wire-supplied member
@@ -4573,9 +4861,26 @@ requires of an excused role.
     `1` versus `1.0` versus `1e0`, `-0` versus `0`, and objects differing only
     in member order — exercised through input-draft reconciliation
     (Section 13.6), `state.changed` reconciliation (Section 14.6), and
-    enum-option distinctness and selection (Section 17.4); and
+    enum-option distinctness and selection (Section 17.4);
 16. a peer-returned `1401` on a request the local sender ceiling did not
-    refuse, verified not to trigger unbounded local retry (Section 22.3).
+    refuse, verified not to trigger unbounded local retry (Section 22.3); and
+17. `variant_host` admission and state: two and eight alternatives accepted;
+    one and nine rejected; duplicate or non-identifier variant values and an
+    authored selection absent from the array rejected; a selector before its
+    host accepted by deferred resolution; missing, duplicate, wrong-type, and
+    wrong-value selector targets rejected; explicit-current selection a no-op;
+    omitted-value selection advancing and wrapping in authored order; an
+    invalid node, action, gated feature, deferred reference, depth, child
+    count, and aggregate count in an unselected branch each rejecting the
+    complete snapshot; a stateful node, any editor, and a nested
+    `variant_host` in an unselected branch each rejected; duplicate node IDs in
+    different alternatives rejected; only selected content presented,
+    measured, exposed to accessibility or focus, and permitted to dispatch;
+    selection published before a later selected-branch action; disconnected
+    selection recovered through welcome `input_state` and the on-`READY`
+    flush; and acknowledgement, reset, alternative removal, host removal, type
+    change, tombstone, and pairing revocation each clearing the retained draft
+    at its specified boundary.
 
 An optional-module suite MUST add failure and crash-boundary cases specific to
 that module.
@@ -4598,6 +4903,13 @@ identifier space, a revision or sequence space, a retained floor, a nonce or
 dedupe-retention window, a counter — MUST state that resource's exhaustion
 behavior and its reclamation path, or state explicitly that none exists and why
 that is acceptable.
+
+Amendment #176 introduces no monotonically consumed resource. A
+`variant_host` uses one overwritable input-draft cell per `(surface, id)` and
+the enclosing surface's existing revision; selection creates neither a new
+revision nor a new identifier space. The cell is reclaimed by acknowledgement,
+reset, host removal, incompatible replacement, surface tombstoning, or pairing
+revocation.
 
 An amendment that claims a property is enforced MUST name the enforcing tool
 and the scope of its enforcement (compare Section 24.4's duty for conformance

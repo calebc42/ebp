@@ -38,7 +38,6 @@
 37 {"badge":"2","content_description":"Open menu","icon":"menu","on_tap":{"action":"demo.tap"},"t":"icon_button"}
 38 {"label":"Tag","t":"chip"}
 39 {"enabled":true,"icon":"tag","label":"Tag","on_tap":{"action":"demo.tap"},"selected":true,"t":"chip"}
-40 {"icon":"info","label":"Help","on_tap":{"action":"demo.tap"},"t":"assist_chip"}
 41 {"icon":"more","items":[{"label":"Open","on_tap":{"action":"demo.tap"}},{"enabled":false,"icon":"delete","label":"Delete","on_tap":{"action":"demo.delete"}}],"t":"menu"}
 42 {"id":"title","t":"text_input"}
 43 {"autofocus":true,"clear_on_submit":true,"enabled":true,"hint":"Title","id":"title","keyboard":"text","label":"Title","max_lines":1,"min_lines":1,"monospace":false,"on_change":{"action":"title.change"},"on_submit":{"action":"title.submit"},"single_line":true,"syntax":"org","t":"text_input","value":"draft"}
@@ -75,8 +74,6 @@
 74 {"id":"bias_eq","on_change":{"action":"bias.set"},"t":"slider","value":-0.0,"values":[-1,0,1]}
 75 {"caret":true,"children":[{"content_description":"Localized Description","icon":"favorite","on_tap":{"action":"fav.toggle"},"t":"icon_button"}],"position":"above","t":"tooltip","text":"Add to favorites"}
 76 {"action_label":"Dismiss","children":[{"icon":"info","on_tap":{"action":"tip.show"},"t":"icon_button"}],"on_action":{"action":"tip.dismiss"},"position":"below","rich":true,"shown":true,"t":"tooltip","text":"Rich tooltip body","title":"Title"}
-77 {"checked":false,"icon":"edit","id":"doc_split","label":"My Button","on_change":{"action":"doc.expand"},"on_tap":{"action":"doc.edit"},"t":"split_button","trailing_description":"Toggle Button"}
-78 {"items":[{"label":"Edit","on_tap":{"action":"doc.edit"}}],"label":"My Button","on_tap":{"action":"doc.edit"},"on_trailing_tap":{"action":"doc.more"},"size":"large","t":"split_button","trailing_label":"More","variant":"outlined"}
 79 {"detail":{"t":"text","text":"Detail"},"list":{"t":"text","text":"List"},"t":"pane_scaffold"}
 80 {"detail":{"t":"text","text":"Supporting"},"extra":{"t":"text","text":"Extra"},"list":{"t":"text","text":"Main"},"t":"pane_scaffold","variant":"supporting"}
 81 {"items":[{"icon":"home","label":"Home","on_tap":{"action":"nav.home"},"selected":true},{"badge":"3","icon":"search","label":"Search","on_tap":{"action":"nav.search"}}],"t":"navigation_rail"}
@@ -85,10 +82,7 @@
 84 {"enabled":false,"id":"docked_q","on_change":{"action":"docs.typed"},"t":"search_bar","trailing_icon":"mic","value":"note","variant":"docked"}
 85 {"id":"dd1","label":"Role","on_change":{"action":"role.pick"},"options":[{"label":"Editor","value":"editor"},{"label":"Viewer","value":"viewer"}],"t":"dropdown","value":"viewer"}
 86 {"id":"sb1","on_change":{"action":"period.change"},"options":[{"label":"Day","value":"day"},{"label":"Month","value":"month"}],"t":"segmented_button","value":"day"}
-87 {"items":[{"icon":"attachment","label":"Attach","on_tap":{"action":"mail.attach"}},{"enabled":false,"icon":"event","label":"Calendar","on_tap":{"action":"mail.calendar"}}],"overflow_icon":"more_vert","t":"app_bar_row"}
-88 {"items":[{"icon":"edit","label":"Edit","on_tap":{"action":"doc.edit"}}],"t":"app_bar_column"}
-89 {"children":[{"bg":"primary_container","children":[{"t":"text","text":"One"}],"height":205,"t":"box","width":186},{"bg":"secondary_container","children":[{"t":"text","text":"Two"}],"height":205,"t":"box","width":186}],"item_corner":28,"item_spacing":8,"item_width":186,"strategy":"multi_browse","t":"carousel"}
-90 {"items":[{"icon":"reply","label":"Reply","on_tap":{"action":"mail.reply"}},{"icon":"archive","label":"Archive","on_tap":{"action":"mail.archive"}}],"t":"fab_menu"}
+89 {"children":[{"bg":"primary","children":[{"t":"text","text":"One"}],"height":205,"t":"box","width":186},{"bg":"secondary","children":[{"t":"text","text":"Two"}],"height":205,"t":"box","width":186}],"item_corner":28,"item_spacing":8,"item_width":186,"strategy":"multi_browse","t":"carousel"}
 91 {"items":[{"label":"One","on_tap":{"action":"group.one"}},{"icon":"edit","label":"Edit","on_tap":{"action":"group.edit"}}],"t":"button_group"}
 92 {"children":[{"t":"text","text":"Item 1"},{"t":"text","text":"Item 2"}],"columns":2,"reverse":true,"spacing":8,"t":"lazy_grid"}
 93 {"footer":{"t":"text","text":"footer"},"groups":[{"items":[{"checked":true,"checked_icon":"edit","icon":"edit","label":"Edit","on_tap":{"action":"demo.tap"},"supporting_text":"Edit mode"},{"icon":"settings","label":"Settings","on_tap":{"action":"demo.tap"}}],"label":"Modification"},{"items":[{"label":"Home","on_tap":{"action":"demo.tap"},"trailing_icon":"home"}],"label":"Navigation"}],"icon":"more_vert","t":"menu"}
@@ -96,6 +90,9 @@
 95 {"children":[{"checked":true,"checked_icon":"work_filled","icon":"work","id":"bg-vertical-0","label":"Work","on_tap":{"action":"demo.tap"},"shape_role":"top","t":"button"},{"checked":false,"checked_icon":"coffee_filled","icon":"coffee","id":"bg-vertical-1","label":"Coffee","on_tap":{"action":"demo.tap"},"shape_role":"middle","t":"button"},{"checked":false,"checked_icon":"home_filled","icon":"home","id":"bg-vertical-2","label":"Home","on_tap":{"action":"demo.tap"},"shape_role":"bottom","t":"button"}],"overlap":6,"t":"column"}
 96 {"children":[{"children":[],"corner":28,"height":205,"t":"box","width":305},{"children":[],"corner":28,"height":205,"t":"box","width":100}],"content_padding":16,"scroll":true,"spacing":8,"t":"row"}
 97 {"children":[{"t":"text","text":"One"},{"t":"text","text":"Two"}],"indicator":{"color":"primary","inset":5,"kind":"outline"},"items":[{"content":{"t":"text","text":"Tab 1"},"label":"Tab 1","selected_content":{"t":"text","text":"* Tab 1"}},{"label":"Tab 2"}],"t":"tabs"}
-98 {"body":{"children":[],"t":"column"},"snackbar":"Snackbar # 1","snackbar_content":{"children":[{"t":"text","text":"Snackbar # 1"},{"color":"inverse_primary","label":"Action","on_tap":{"action":"demo.tap"},"t":"button","variant":"text"}],"t":"row"},"t":"scaffold"}
+98 {"body":{"children":[],"t":"column"},"snackbar":"Snackbar # 1","snackbar_content":{"children":[{"t":"text","text":"Snackbar # 1"},{"color":"secondary","label":"Action","on_tap":{"action":"demo.tap"},"t":"button","variant":"text"}],"t":"row"},"t":"scaffold"}
 99 {"body":{"children":[],"t":"column"},"rail":{"items":[{"icon":"home","label":"Songs","on_tap":{"action":"demo.tap"}}],"t":"navigation_rail"},"t":"scaffold"}
 100 {"action":"demo.guarded","confirm":{"confirm_label":"Delete","dismiss_label":"Keep","icon":"delete","text":"Delete this note?","title":"Delete note"}}
+101 {"builtin":"surface.open","surface":"app:jetpacs.app-store"}
+102 {"action":"app.open","args":{"app":"org-mode"},"open_surface":"app:org-mode"}
+103 {"id":"org.visibility","t":"variant_host","value":"contents","variants":[{"content":{"children":[{"label":"Show all","on_tap":{"builtin":"variant.switch","id":"org.visibility","value":"all"},"t":"button"}],"t":"row"},"value":"contents"},{"content":{"t":"text","text":"Everything"},"value":"all"}]}

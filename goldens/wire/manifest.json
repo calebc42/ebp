@@ -1,5 +1,5 @@
 {
-  "spec_version": "2.0.0-draft",
+  "spec_version": "3.1.0-draft",
   "framing": "content-length",
   "fixtures": [
     {
@@ -13,7 +13,7 @@
           "id": "h1",
           "method": "session.hello",
           "params": {
-            "protocol": 2,
+            "protocol": 3,
             "client": {
               "name": "kat-client",
               "version": "1.0.0"
@@ -36,7 +36,7 @@
           "id": "h1",
           "method": "session.hello",
           "params": {
-            "protocol": 2,
+            "protocol": 3,
             "client": {
               "name": "kat-client",
               "version": "1.0.0"
@@ -61,15 +61,15 @@
             "pairing_id": "101112131415161718191a1b1c1d1e1f",
             "client_nonce": "202122232425262728292a2b2c2d2e2f",
             "server_nonce": "303132333435363738393a3b3c3d3e3f",
-            "client_proof": "03e270fd0af4566336283444b641a722b5828c190ebdbe3dc50c5be2c9c9fb43"
+            "client_proof": "a76f9e392582c990ef08858fe69740323499ab87566d9b4e6f99a246bdd024a6"
           }
         },
         {
           "jsonrpc": "2.0",
           "id": "h2",
           "result": {
-            "server_proof": "e9333d48cfc2780d708db4a9782705c5e1c988c7eedc2d1734051f2fb9be58ec",
-            "protocol": 2,
+            "server_proof": "ca1c37bcb735442fb979127a07fc41d2a15ea0fcf58ae1ffa4bf06edc0bdfdcc",
+            "protocol": 3,
             "server": {
               "name": "kat-companion",
               "version": "1.0.0"
@@ -91,7 +91,8 @@
                   "view.switch",
                   "companion.settings.open"
                 ],
-                "features": []
+                "features": [],
+                "extensions": []
               }
             },
             "surfaces": {},

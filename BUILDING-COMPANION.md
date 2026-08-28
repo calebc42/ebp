@@ -2,16 +2,13 @@
 
 The companion is the durable server: it listens, renders what Emacs
 sends, caches the last-known UI, and queues actions while Emacs is away.
-The reference implementation is Android (Kotlin / Jetpack Compose), but
-nothing in the contract is Android's — a desktop tray app, an e-ink
-dashboard, a terminal TUI, a web view on a tablet: anything that can hold
-a TCP socket and draw boxes can be a companion.
+The contract deliberately does not prescribe a programming language, UI
+framework, design system, or renderer architecture. Anything that implements
+the transport and semantic rules can be a companion.
 
 [SPEC.md](SPEC.md) is the whole contract. This guide is the *build
 order* — the rungs in the order they pay off and what to test at each
-one; everything here stands alone, and a map into the reference
-implementation's source sits [at the end](#the-reference-implementation-in-one-place)
-for when you want a worked example. §12 of the spec defines minimal
+one; everything here stands alone. §12 of the spec defines minimal
 conformance; this document is that section, unrolled. (The guide tracks
 the protocol-1 NDJSON wire; the v2 line, [SPEC-2.md](SPEC-2.md),
 re-homes the same constitution on JSON-RPC 2.0 framing — rungs 1–4
@@ -137,36 +134,16 @@ an error path.
    dispatches anything the wire names (the closed `on_fire` vocabulary
    is the one, deliberately tiny exception).
 
-## The reference implementation, in one place
+## Conformance map
 
-Nothing above requires reading another repo. When you want a worked
-example, the reference pair lives in the
-[jetpacs repo](https://github.com/calebc42/jetpacs): an elisp client
-(the desktop-Emacs development loop from the top of this guide) and an
-Android/Compose companion. Where each rung is implemented there:
-
-| Rung | Reference source |
-|---|---|
-| 0 — socket and envelope | `FrameCodec.kt`, `Envelope.kt`, `JetpacsServer.kt` |
-| 1 — handshake and auth | `JetpacsAuth.kt`; the welcome builder in `JetpacsConnection.kt` |
-| 2 — surfaces and cache | `SurfaceStore.kt`, `SurfaceManager.kt` |
-| 3 — renderer | `SduiRenderer.kt`, `SduiContentNodes.kt`, `SduiInputNodes.kt`, `SduiScaffold.kt`; `jetpacs-hello.el` (~60 lines) as the first integration test |
-| 4 — actions and queue | `ActionReceiver.kt`; the queue in `JetpacsDatabase.kt` |
-| §7 dialogs / reminders | `JetpacsDialogState.kt`, `Reminders.kt` |
-| §8 editor sync | `EditorSync.kt` |
-| §10 device capabilities | `DeviceCapabilities.kt` |
-| §11 device triggers | `TriggerHost.kt`, `BootReceiver.kt` |
-
-The same repo's
-[ARCHITECTURE.md](https://github.com/calebc42/jetpacs/blob/main/docs/ARCHITECTURE.md#kotlin-conformance-checklist-the-contract-tripwire)
-maintains the table mapping every reference-companion surface to its
-SPEC section. Reuse it as your own audit: for each row, either your
-companion implements the section or it doesn't grant/advertise it.
-There is no third state.
+Keep a local table mapping each endpoint component to the SPEC section it
+implements. For every row, either the endpoint implements the section or it
+does not grant or advertise it. There is no third state, and implementation
+source never becomes protocol authority.
 
 ## License
 
 The spec is an interface anyone may implement. A clean-room companion
 written against SPEC.md carries no obligation from this repo's GPLv3 —
-see the README's License section. (If you *port* the reference Kotlin,
-that's a derivative work and GPLv3 applies.)
+see the README's License section. A port of an existing implementation may be
+a derivative work; implementing only this contract is not.

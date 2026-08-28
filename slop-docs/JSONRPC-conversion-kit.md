@@ -131,7 +131,7 @@ Recommendation carried over from the walk: extend typed errors spec-wide —
 revision rejection and set rejection get codes too.
 
 **Caveat — Emacs-outbound error `data` (source-verified).** Every example
-above is *companion*-emitted (Kotlin side) and unaffected, and inbound
+above is *companion*-emitted and unaffected, and inbound
 `error.data` reaches Emacs intact (:486-491). But when an *Emacs* handler
 signals `jsonrpc-error`, the library's reply path emits only `:code` and
 `:message` — `:data` is stripped in the dispatch loop before any overridable
