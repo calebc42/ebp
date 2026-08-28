@@ -2855,16 +2855,17 @@ result handling, focus ownership, or `clear_on_submit` behavior.
 
 `autofocus: true` MAY acquire focus only when the first accepted snapshot
 containing a new presentation identity is presented. A snapshot with the same
-identity MUST NOT repeatedly steal focus. For a non-password text input whose
-`on_submit` is remote, `clear_on_submit: true` MUST clear the value only after
-that occurrence is safely admitted under Section 14.4. The Companion MUST
+identity MUST NOT repeatedly steal focus. For a non-password text input,
+`clear_on_submit: true` requires a remote `on_submit` descriptor and MUST clear
+the value only after that occurrence is safely admitted under Section 14.4.
+The Companion MUST
 retain the value after an offline `drop`, admission failure, `stale` or
 `rejected` result, transient error, cancellation, timeout, or transport loss.
 After clearing, it MUST retain focus where the platform permits and MUST update
 its latest input-state value. While `READY`, it MUST send the cleared value in
 `state.changed` after safe admission and before a later action from that node;
 while disconnected, the cleared value appears in the next welcome
-`input_state`. `clear_on_submit: true` is invalid when `on_submit` is a builtin.
+`input_state`. It is invalid when `on_submit` is absent or is a builtin.
 
 `on_enter` causes the software-input Enter action to dispatch the full editor
 value rather than insert a newline. Unless `single_line` is true, a hardware

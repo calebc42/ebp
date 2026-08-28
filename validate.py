@@ -4,7 +4,7 @@
 This is the repo's self-check and a runnable reference for the conformance
 checks an implementation's own test suite should perform (SPEC 24.5–24.6):
 
-- contract.json structural self-consistency (format 9);
+- contract.json structural self-consistency (format 10);
 - SPEC.md §8 error table and §11 method registry cross-checked against
   contract.json, so spec and contract cannot drift silently;
 - goldens/widgets.golden and goldens/hypertext.golden: every node validates
@@ -88,8 +88,8 @@ def check_contract():
                   "variant_schema", "semantics_schema", "text_input_schema"):
         if field not in contract:
             problem(f"contract.json: missing `{field}`")
-    if contract.get("contract_format") != 9:
-        problem("contract.json: contract_format must be 9")
+    if contract.get("contract_format") != 10:
+        problem("contract.json: contract_format must be 10")
     if contract.get("protocol_version") != 3:
         problem("contract.json: protocol_version must be 3")
     for t in contract.get("core_node_set", []):
@@ -216,6 +216,29 @@ def check_contract():
                 SEMANTICS_SCHEMA.get("enums", {}).get("role", []):
             problem(f"contract.json: semantic default for `{node_type}` has unknown role")
     expected_text_input_schema = {
+        "line_counts": {
+            "type": "positive-integer", "order": "min<=max",
+            "text_input_default_min": 1,
+            "text_input_default_max": "min_lines",
+            "single_line_value": 1,
+            "single_line_forbids": "U+000A",
+        },
+        "password": {
+            "authored_value": "absent-or-empty",
+            "on_change": "absent",
+            "clear_on_submit": "absent-or-false",
+            "submit_capture": "self",
+            "capture_allowed_from": ["own-on_submit", "dialog.submit"],
+            "remote_policy": "drop",
+            "forbidden_descriptor_members": ["dedupe", "ttl_s"],
+            "requires_session_state": "READY",
+            "storage": "volatile",
+            "deadline_ms": 30000,
+        },
+        "clear_on_submit": {
+            "requires": "remote-on_submit",
+            "forbidden_when_on_submit": "builtin",
+        },
         "selection": {
             "type": "two-number-array", "unit": "unicode-scalar",
             "minimum": 0, "order": "start<=end",
@@ -254,7 +277,7 @@ def check_contract():
         "logical_value_excludes": ["prefix", "suffix", "mask-literals"],
     }
     if TEXT_INPUT_SCHEMA != expected_text_input_schema:
-        problem("contract.json: text_input_schema drifted from amendment #180")
+        problem("contract.json: text_input_schema drifted from amendment #181")
 
 
 # ------------------------------------------------------- spec cross-check ---
@@ -320,6 +343,8 @@ class NodeDocument:
     def __init__(self):
         self.node_count = 0
         self.ids: dict[str, str] = {}
+        self.nodes: dict[str, dict] = {}
+        self.action_refs: list[tuple[str, dict, str | None, str | None]] = []
         self.variant_hosts: dict[str, tuple[set[str], str]] = {}
         self.variant_refs: list[tuple[str, str, object]] = []
 
@@ -338,8 +363,44 @@ class NodeDocument:
                 problem(f"{path}.value: `{selected}` is not authored by "
                         f"variant_host `{host_id}`")
 
+        # Section 14.6: secrecy follows the resolved captured node, never an
+        # untrusted renderer flag.  Actions may precede the field they name,
+        # so this relation is checked only after the complete document walk.
+        password_rule = TEXT_INPUT_SCHEMA.get("password", {})
+        allowed = set(password_rule.get("capture_allowed_from", []))
+        for path, descriptor, hook, owner_id in self.action_refs:
+            capture = descriptor.get("capture_fields")
+            if not isinstance(capture, list):
+                continue
+            for field_id in capture:
+                node = self.nodes.get(field_id)
+                if not (isinstance(node, dict)
+                        and node.get("t") == "text_input"
+                        and node.get("password") is True):
+                    continue
+                own_submit = (hook == "on_submit" and owner_id == field_id
+                              and "own-on_submit" in allowed)
+                dialog_submit = (descriptor.get("builtin") == "dialog.submit"
+                                 and "dialog.submit" in allowed)
+                if not (own_submit or dialog_submit):
+                    problem(f"{path}.capture_fields: password `{field_id}` "
+                            "may be captured only by its own on_submit or "
+                            "dialog.submit")
+                if "action" in descriptor:
+                    policy = descriptor.get(
+                        "when_offline", ACTIONS["offline_default"])
+                    if policy != password_rule.get("remote_policy"):
+                        problem(f"{path}.when_offline: a password capture "
+                                "must use drop")
+                    for member in password_rule.get(
+                            "forbidden_descriptor_members", []):
+                        if member in descriptor:
+                            problem(f"{path}.{member}: invalid for a password "
+                                    "capture")
 
-def check_action(obj: dict, path: str, ctx: NodeDocument | None = None):
+
+def check_action(obj: dict, path: str, ctx: NodeDocument | None = None,
+                 hook: str | None = None, owner_id: str | None = None):
     has_action, has_builtin = "action" in obj, "builtin" in obj
     if has_action == has_builtin:
         problem(f"{path}: action needs exactly one of `action`/`builtin`")
@@ -413,6 +474,8 @@ def check_action(obj: dict, path: str, ctx: NodeDocument | None = None):
     for key in obj:
         if key not in required and key not in optional and key != "builtin":
             problem(f"{path}: unknown action field `{key}`")
+    if ctx is not None:
+        ctx.action_refs.append((path, obj, hook, owner_id))
 
 
 MAX_NODE_DEPTH = contract["limits"]["fixed"]["max_node_depth"]
@@ -498,7 +561,7 @@ def check_slider_values(node, path: str):
 
 
 def check_text_input(node, path: str):
-    """Validate the complete amendment #180 text-input envelope."""
+    """Validate the complete amendment #181 text-input envelope."""
     value = node.get("value", "")
     if not isinstance(value, str):
         problem(f"{path}.value: must be a string")
@@ -516,6 +579,57 @@ def check_text_input(node, path: str):
     for member in ("is_error", "hide_keyboard_on_submit"):
         if member in node and not isinstance(node[member], bool):
             problem(f"{path}.{member}: {member} must be a boolean")
+
+    line_rule = TEXT_INPUT_SCHEMA.get("line_counts", {})
+    authored_min = None
+    authored_max = None
+    if "min_lines" in node:
+        authored_min = semantic_integer(node["min_lines"], 1)
+        if authored_min is None:
+            problem(f"{path}.min_lines: must be a positive integer")
+    if "max_lines" in node:
+        authored_max = semantic_integer(node["max_lines"], 1)
+        if authored_max is None:
+            problem(f"{path}.max_lines: must be a positive integer")
+    minimum = authored_min or line_rule.get("text_input_default_min", 1)
+    maximum_lines = authored_max or minimum
+    if authored_min is not None and authored_max is not None and \
+            authored_min > authored_max:
+        problem(f"{path}: min_lines must not exceed max_lines")
+    if node.get("single_line") is True:
+        required_line_count = line_rule.get("single_line_value", 1)
+        if minimum != required_line_count or maximum_lines != required_line_count:
+            problem(f"{path}: single_line requires line counts of 1")
+        if isinstance(value, str) and "\n" in value:
+            problem(f"{path}.value: single_line value contains U+000A")
+
+    password_rule = TEXT_INPUT_SCHEMA.get("password", {})
+    if node.get("password") is True:
+        if isinstance(value, str) and value:
+            problem(f"{path}.value: password value must be absent or empty")
+        if "on_change" in node:
+            problem(f"{path}.on_change: password on_change must be absent")
+        if node.get("clear_on_submit") is True:
+            problem(f"{path}.clear_on_submit: password clear_on_submit must "
+                    "be absent or false")
+        submit = node.get("on_submit")
+        if isinstance(submit, dict):
+            capture = submit.get("capture_fields")
+            if not isinstance(capture, list) or node.get("id") not in capture:
+                problem(f"{path}.on_submit.capture_fields: password submit "
+                        "must capture its own id")
+            if "action" in submit and submit.get(
+                    "when_offline", ACTIONS["offline_default"]) != \
+                    password_rule.get("remote_policy"):
+                problem(f"{path}.on_submit.when_offline: password submit "
+                        "must use drop")
+
+    if node.get("clear_on_submit") is True:
+        submit = node.get("on_submit")
+        clear_rule = TEXT_INPUT_SCHEMA.get("clear_on_submit", {})
+        if not (isinstance(submit, dict) and "action" in submit):
+            requirement = clear_rule.get("requires", "remote-on_submit")
+            problem(f"{path}.clear_on_submit: requires {requirement}")
 
     maximum = None
     if "max_length" in node:
@@ -818,6 +932,7 @@ def _check_node(value, path: str, depth: int, ctx: NodeDocument,
                         f"`{node_id}` (first at {ctx.ids[node_id]})")
             else:
                 ctx.ids[node_id] = path
+                ctx.nodes[node_id] = value
         if "semantics" in value:
             authored_collection = check_semantics(
                 value["semantics"], f"{path}.semantics", ctx,
@@ -860,10 +975,6 @@ def _check_node(value, path: str, depth: int, ctx: NodeDocument,
                     problem(f"{path}: unknown key `{key}` on {t}")
             if t == "text_input":
                 check_text_input(value, path)
-                if value.get("single_line") and \
-                        isinstance(value.get("value", ""), str) and \
-                        "\n" in value.get("value", ""):
-                    problem(f"{path}: single_line value contains U+000A (SPEC 17.4)")
             if t == "enum_list":
                 check_enum_options(value, path)
             if t == "slider":
@@ -888,7 +999,13 @@ def _check_node(value, path: str, depth: int, ctx: NodeDocument,
             continue
         if (key in HOOK_KEYS or key == "on_trigger") \
                 and isinstance(child, dict):
-            check_action(child, f"{path}.{key}", ctx)
+            check_action(
+                child,
+                f"{path}.{key}",
+                ctx,
+                hook=key,
+                owner_id=value.get("id") if node_type is not None else None,
+            )
         else:
             _check_node(child, f"{path}.{key}", depth, ctx, inside_variant,
                         descendant_keys, descendant_collections)

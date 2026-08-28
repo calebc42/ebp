@@ -1,5 +1,5 @@
 {
-  "contract_format": 9,
+  "contract_format": 10,
   "protocol_version": 3,
   "spec_version": "3.1.0-draft",
   "reference_api_version": "3.1.0",
@@ -307,6 +307,36 @@
     }
   },
   "text_input_schema": {
+    "line_counts": {
+      "type": "positive-integer",
+      "order": "min<=max",
+      "text_input_default_min": 1,
+      "text_input_default_max": "min_lines",
+      "single_line_value": 1,
+      "single_line_forbids": "U+000A"
+    },
+    "password": {
+      "authored_value": "absent-or-empty",
+      "on_change": "absent",
+      "clear_on_submit": "absent-or-false",
+      "submit_capture": "self",
+      "capture_allowed_from": [
+        "own-on_submit",
+        "dialog.submit"
+      ],
+      "remote_policy": "drop",
+      "forbidden_descriptor_members": [
+        "dedupe",
+        "ttl_s"
+      ],
+      "requires_session_state": "READY",
+      "storage": "volatile",
+      "deadline_ms": 30000
+    },
+    "clear_on_submit": {
+      "requires": "remote-on_submit",
+      "forbidden_when_on_submit": "builtin"
+    },
     "selection": {
       "type": "two-number-array",
       "unit": "unicode-scalar",

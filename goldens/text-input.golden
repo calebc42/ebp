@@ -1,7 +1,7 @@
 00 {"valid":true,"node":{"t":"text_input","id":"profile","value":"abc123","variant":"filled","is_error":true,"supporting_text":"Check this value","prefix":"@","suffix":".example","leading_icon":"person","trailing_icon":"edit","max_length":6,"selection":[0,6],"hide_keyboard_on_submit":true,"on_submit":{"action":"profile.submit"},"content_padding":0,"filter":"alnum"}}
 01 {"valid":true,"node":{"t":"text_input","id":"scalar","value":"1😀2","max_length":3,"selection":[1,2],"mask":"##-#"}}
 02 {"valid":true,"node":{"t":"text_input","id":"fallback","value":"é + 1","variant":"future-style","filter":"future-filter"}}
-03 {"valid":true,"node":{"t":"text_input","id":"pin","password":true,"max_length":6,"filter":"digits","on_submit":{"action":"pin.submit"}}}
+03 {"valid":true,"node":{"t":"text_input","id":"pin","password":true,"max_length":6,"filter":"digits","on_submit":{"action":"pin.submit","capture_fields":["pin"]}}}
 04 {"valid":false,"reason":"two-integer array","node":{"t":"text_input","id":"bad-selection-type","selection":"0:0"}}
 05 {"valid":false,"reason":"two-integer array","node":{"t":"text_input","id":"bad-selection-count","selection":[0]}}
 06 {"valid":false,"reason":"two-integer array","node":{"t":"text_input","id":"bad-selection-number","selection":[0,1.5],"value":"ab"}}
@@ -25,3 +25,16 @@
 24 {"valid":false,"reason":"two-integer array","node":{"t":"text_input","id":"unsafe-selection","selection":[0,9007199254740992]}}
 25 {"valid":false,"reason":"must be a string","node":{"t":"text_input","id":"bad-variant","variant":1}}
 26 {"valid":false,"reason":"must be a string","node":{"t":"text_input","id":"bad-filter","filter":["digits"]}}
+27 {"valid":false,"reason":"must capture its own id","node":{"t":"text_input","id":"missing-capture","password":true,"on_submit":{"action":"pin.submit"}}}
+28 {"valid":false,"reason":"must use drop","node":{"t":"text_input","id":"queued-secret","password":true,"on_submit":{"action":"pin.submit","capture_fields":["queued-secret"],"when_offline":"queue","ttl_s":60}}}
+29 {"valid":false,"reason":"password clear_on_submit","node":{"t":"text_input","id":"cleared-secret","password":true,"clear_on_submit":true,"on_submit":{"action":"pin.submit","capture_fields":["cleared-secret"]}}}
+30 {"valid":false,"reason":"requires remote-on_submit","node":{"t":"text_input","id":"builtin-clear","clear_on_submit":true,"on_submit":{"builtin":"dialog.submit"}}}
+31 {"valid":false,"reason":"requires remote-on_submit","node":{"t":"text_input","id":"missing-submit","clear_on_submit":true}}
+32 {"valid":false,"reason":"min_lines must not exceed max_lines","node":{"t":"text_input","id":"reversed-lines","min_lines":3,"max_lines":2}}
+33 {"valid":false,"reason":"single_line requires line counts of 1","node":{"t":"text_input","id":"single-lines","single_line":true,"max_lines":2}}
+34 {"valid":false,"reason":"single_line value contains U+000A","node":{"t":"text_input","id":"single-newline","single_line":true,"value":"a\nb"}}
+35 {"valid":false,"reason":"password value must be absent or empty","node":{"t":"text_input","id":"seeded-secret","password":true,"value":"secret"}}
+36 {"valid":false,"reason":"password on_change must be absent","node":{"t":"text_input","id":"published-secret","password":true,"on_change":{"action":"pin.change"}}}
+37 {"valid":false,"reason":"may be captured only by its own on_submit or dialog.submit","node":{"t":"column","children":[{"t":"text_input","id":"pw","password":true},{"t":"button","label":"Send","on_tap":{"action":"secret.send","capture_fields":["pw"]}}]}}
+38 {"valid":true,"node":{"t":"column","children":[{"t":"text_input","id":"pw","password":true},{"t":"button","label":"Submit","on_tap":{"builtin":"dialog.submit","capture_fields":["pw"]}}]}}
+39 {"valid":true,"node":{"t":"text_input","id":"clear","clear_on_submit":true,"on_submit":{"action":"clear.submit"}}}
