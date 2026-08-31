@@ -1,5 +1,5 @@
 {
-  "contract_format": 10,
+  "contract_format": 11,
   "protocol_version": 3,
   "spec_version": "3.1.0-draft",
   "reference_api_version": "3.1.0",
@@ -36,6 +36,7 @@
     "collapsible",
     "reorderable_list",
     "tabs",
+    "tab_selector",
     "table",
     "button",
     "icon_button",
@@ -272,6 +273,10 @@
         "role": "tab_group",
         "selection_member": "initial",
         "selection_default_index": 0
+      },
+      "tab_selector": {
+        "role": "tab_group",
+        "selection_member": "selected"
       },
       "segmented_button": {
         "role": "tab_group",
@@ -610,6 +615,19 @@
         "scrollable",
         "pager_only",
         "on_change",
+        "id",
+        "style",
+        "indicator"
+      ]
+    },
+    "tab_selector": {
+      "required": [
+        "items",
+        "selected",
+        "on_change"
+      ],
+      "optional": [
+        "scrollable",
         "id",
         "style",
         "indicator"
@@ -1545,6 +1563,10 @@
       "expanded"
     ],
     "tabs.style": [
+      "primary",
+      "secondary"
+    ],
+    "tab_selector.style": [
       "primary",
       "secondary"
     ],

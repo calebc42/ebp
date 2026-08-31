@@ -21,11 +21,11 @@ implementations follow.
 | File | What it is |
 |---|---|
 | [`SPEC.md`](SPEC.md) | **The governing spec** (protocol 3, document 3.1.0-draft) — the normalized rewrite: JSON data model, Content-Length framing, JSON-RPC conventions, pairing with a normative HMAC known-answer vector, session lifecycle, surfaces and input-state reconciliation, the semantic-action and toolkit-neutral accessibility boundaries, durable queue, the design-system-neutral widget vocabulary and negotiated renderer extensions, presentation/editor/capability/trigger modules, and conformance (§24) with the required adversarial tests (§24.6). |
-| [`SPEC-2.md`](SPEC-2.md) | Historical: the previous v2 draft (the envelope-swap fold). Superseded by `SPEC.md` (amendment #32); kept for amendment-log provenance. |
-| [`contract.json`](contract.json) | The machine-readable projection (format 9) a renderer or authoring tool validates emissions against — the core node registry, per-node key schemas with universal attributes, the nested semantics envelope and node-derived defaults, the text-input constraint envelope, field types and enums, the full method table (sender, class, legal states, capability gate, params, result, errors), the error-code registry, limits, the discriminated action schema, and the capability/trigger/state registries. Concrete renderer extensions are endpoint-owned and are not registered here. |
+| [`contract.json`](contract.json) | The machine-readable projection (format 11) a renderer or authoring tool validates emissions against — the core node registry, per-node key schemas with universal attributes, the nested semantics envelope and node-derived defaults, the text-input constraint envelope, field types and enums, the full method table (sender, class, legal states, capability gate, params, result, errors), the error-code registry, limits, the discriminated action schema, and the capability/trigger/state registries. Concrete renderer extensions are endpoint-owned and are not registered here. |
 | [`goldens/`](goldens/) | The conformance corpus. JSON-line files: `widgets.golden` (every node type plus bare actions), `semantics.golden` (accepted and rejected Semantics envelopes), `text-input.golden` (accepted and rejected §17.4 constraint envelopes), `frames.golden` (one message per registry method, both directions), `hypertext.golden` (document node arrays), and `editor.golden` (§19 splice known-answers — positions in Unicode scalar values per §19.1, with astral-plane and refused-splice cases that fail any UTF-16 code-unit or grapheme indexing). `goldens/wire/` holds byte-exact framed fixtures per §24.5 — positive vectors (the §9.3 known-answer handshake, a UTF-8 byte-count body, back-to-back frames) and negative vectors (§24.6 items 1–3) — described by `goldens/wire/manifest.json`. |
 | [`BUILDING-COMPANION.md`](BUILDING-COMPANION.md) | The implementation-neutral build order — conformance unrolled rung by rung and what to test at each. |
 | [`validate.py`](validate.py) | Stdlib-only self-check and reference conformance harness: goldens against `contract.json`, `contract.json` against SPEC §8/§11, wire fixtures through a reference decoder at varied chunk sizes (including one octet at a time), and the §9.3 HMAC known-answer vector. Run by this repo's CI. |
+| [`conformance/`](conformance/) | Deterministic, implementation-neutral corpus generators and reference replayers shared by endpoint implementations. The text-input corpus is fixed at seed 20260828 and 10,000 cases. |
 | [`SPEC-CHANGES.md`](SPEC-CHANGES.md) | The amendment log. Every normative change lands with one entry here (date, section, change, fixtures regenerated, reviewer). No entry, no amendment. |
 | [`slop-docs/`](slop-docs/) | The slop line's drafting kits and precedent surveys (JSON-RPC conversion, WebSocket transport, the LiveView harvest) — the provenance documents SPEC-2's status block and §16 cite. Informative only — not part of the contract surface. |
 
@@ -44,9 +44,8 @@ header (SPEC.md):
   negotiated per-connection via `surface_profiles` (SPEC §10.2), not
   versioned.
 - **`contract_format`** — the shape of `contract.json` itself (currently
-  `8`: typed method table with states/gates, universal node attributes,
-  nested semantics schemas/defaults, field types and enums, negotiated
-  extension sets, and module registries).
+  `11`). Implementations must consume the declared format rather than infer
+  compatibility from the protocol version alone.
 
 Releases are tagged off the protocol/spec numbers (e.g. `spec-1.0-rc`). The
 elisp reference implementation's own API version is a *separate* number that

@@ -2628,6 +2628,7 @@ disconnected a Companion MAY render a cached image, or MUST otherwise render
 | `collapsible` | `id: identifier`, `header: Node`, `children: Node[]` | `collapsed`, `on_long_tap`, `swipe_start`, `swipe_end`. Expansion state is Companion-local presentation state. |
 | `reorderable_list` | `items: Node[]` | `on_reorder`. Every item MUST have a unique `key` or `id`; otherwise the node is invalid. |
 | `tabs` | `items: TabItem[]`, `children: Node[]` | `initial`, `scrollable`, `pager_only`, `on_change`, `id`. Arrays MUST have equal non-zero length. |
+| `tab_selector` | `items: TabItem[]`, `selected: integer`, `on_change: ActionDescriptor` | `scrollable`, `id`, `style`, `indicator`. A controlled tab strip which selects externally authored content and owns no child pages. |
 | `table` | `rows: TableRow[]` | `aligns`, `on_add_row`, `on_add_col`. Wide tables MAY scroll horizontally. |
 
 A `Variant` is the closed object `{value: identifier, content: Node}`. A
@@ -2687,6 +2688,16 @@ For `tabs`, `id` is an identifier; `scrollable` and `pager_only` are booleans;
 and `initial` MUST be less than the common non-zero item count. Omitting `id`
 does not create a special rule: `key` and then tree path supply presentation
 identity under Section 16.1.
+
+For `tab_selector`, `items` MUST be non-empty and `selected` MUST be a
+zero-based index less than the item count. It is controlled presentation:
+`selected` is the current authored selection and the Companion MUST NOT retain
+or infer another selection across snapshots. Activating an item dispatches
+`on_change` exactly once with its zero-based index as `args.value`; selection
+does not change until an accepted snapshot authors that index. `scrollable`,
+`style`, `indicator`, `id`, and every `TabItem` have the same meanings and
+validation as for `tabs`. A `tab_selector` contains no page children, so
+unselected application content is neither accepted nor mounted through it.
 
 A `TableRow` is one of:
 

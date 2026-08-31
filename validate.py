@@ -88,8 +88,8 @@ def check_contract():
                   "variant_schema", "semantics_schema", "text_input_schema"):
         if field not in contract:
             problem(f"contract.json: missing `{field}`")
-    if contract.get("contract_format") != 10:
-        problem("contract.json: contract_format must be 10")
+    if contract.get("contract_format") != 11:
+        problem("contract.json: contract_format must be 11")
     if contract.get("protocol_version") != 3:
         problem("contract.json: protocol_version must be 3")
     for t in contract.get("core_node_set", []):
@@ -979,6 +979,18 @@ def _check_node(value, path: str, depth: int, ctx: NodeDocument,
                 check_enum_options(value, path)
             if t == "slider":
                 check_slider_values(value, path)
+            if t == "tab_selector":
+                items = value.get("items")
+                selected = value.get("selected")
+                if not isinstance(items, list) or not items:
+                    problem(f"{path}.items: must be a non-empty TabItem array")
+                else:
+                    for i, item in enumerate(items):
+                        if not isinstance(item, dict) or not isinstance(item.get("label"), str):
+                            problem(f"{path}.items[{i}].label: must be a string")
+                    if (not isinstance(selected, int) or isinstance(selected, bool)
+                            or selected < 0 or selected >= len(items)):
+                        problem(f"{path}.selected: must index the item count")
             if t == "variant_host":
                 descendants = collection_ancestors + (
                     (authored_collection,) if authored_collection else ())
