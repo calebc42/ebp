@@ -2989,7 +2989,7 @@ pixel.
 |---|---|---|
 | `chart` | `series: ChartSeries[]` | `kind`, `height`, `y_range`, `summary`, `on_point_tap`, `children` fallback |
 | `canvas` | `width`, `height`, `ops: CanvasOp[]` | `children` fallback |
-| `month_grid` | `month: YYYY-MM` | `marks`, `selected`, `min_month`, `max_month`, `on_day_tap`, `on_month_change`, `children` fallback |
+| `month_grid` | `month: YYYY-MM` | `marks`, `day_styles`, `selected`, `min_month`, `max_month`, `min_date`, `max_date`, `disabled_weekdays`, `range_start`, `range_end`, `on_day_tap`, `on_month_change`, `children` fallback |
 
 `chart.kind` is `line` (default), `bar`, `area`, or `sparkline`. A ChartSeries
 MUST contain `points: ChartPoint[]`, MAY contain `name: string` and
@@ -3032,13 +3032,33 @@ rect heights, and circle radii MUST be non-negative. `chart.height` is positive
 `dp`; `chart.y_range`, when
 present, is a two-number array `[min, max]` with `min < max`.
 
-`month_grid.marks` maps `YYYY-MM-DD` dates to `{dots, color?}`; `dots` MUST be an
-integer `0..3` and `color` is a Color. `selected` is one `YYYY-MM-DD` date;
-`min_month` and `max_month` are `YYYY-MM`, and the minimum MUST NOT follow the
-maximum.
+`month_grid.marks` maps `YYYY-MM-DD` dates to the closed object
+`{dots, color?}`; `dots` MUST be an integer `0..3` and `color` is a Color.
+`day_styles` maps `YYYY-MM-DD` dates to the closed object
+`{background: Color, foreground: Color}`. An authored day style changes only
+that cell's presentation: it overrides the default selected/range-cap
+background and day-number foreground, while an explicit mark `color` still
+controls its dots. When a styled cell's mark omits `color`, its dots use the
+styled foreground. Day styles do not select a date, change range membership,
+or create an action target. A sender MUST emit `day_styles` only when the
+applicable profile's Section 10.2 member map advertises that member.
+
+`selected` is one `YYYY-MM-DD` date. `min_month` and `max_month` are
+`YYYY-MM`, and the minimum MUST NOT follow the maximum. `min_date` and
+`max_date` are inclusive `YYYY-MM-DD` day bounds and the minimum MUST NOT
+follow the maximum. `disabled_weekdays` is an array of distinct integers
+`0..6`, with `0` meaning Sunday. A day outside the day bounds or on a disabled
+weekday MUST render disabled and MUST NOT dispatch `on_day_tap`; month bounds
+continue to constrain only local month navigation.
+
+`range_start` and `range_end` are an inclusive `YYYY-MM-DD` range. They MUST
+be present together, the start MUST NOT follow the end, and a range is
+mutually exclusive with `selected`. The two endpoints render as caps and the
+interior as one continuous band. Marks and day styles may coexist with a
+range; a day style wins only for its cell as described above.
 Local month navigation MUST respect the bounds. A snapshot that changes only
-marks MUST preserve the month the user is viewing; a changed authored `month`
-MUST adopt that month.
+marks or day styles MUST preserve the month the user is viewing; a changed
+authored `month` MUST adopt that month.
 
 The optional `children` on visualization nodes is the authored fallback. A
 Companion that supports the visualization SHOULD ignore the fallback; an

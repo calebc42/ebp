@@ -883,6 +883,7 @@
       ],
       "optional": [
         "marks",
+        "day_styles",
         "selected",
         "min_month",
         "max_month",
@@ -1166,6 +1167,7 @@
     "swipe_end": "swipe-object",
     "badge": "string-or-number",
     "marks": "date-marks-object",
+    "day_styles": "date-style-object",
     "aligns": "align-array",
     "time": "string",
     "fg": "color",
