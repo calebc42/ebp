@@ -1,5 +1,5 @@
 {
-  "contract_format": 11,
+  "contract_format": 12,
   "protocol_version": 3,
   "spec_version": "3.1.0-draft",
   "reference_api_version": "3.1.0",
@@ -2697,6 +2697,12 @@
       "max_children_per_node": 10000,
       "max_variants_per_host": 8,
       "max_semantic_actions_per_node": 8,
+      "max_widget_nodes": 128,
+      "max_widget_lazy_items": 40,
+      "max_widget_node_depth": 12,
+      "max_widget_size_variants": 8,
+      "max_widget_remote_views_bytes": 716800,
+      "max_swipe_actions_per_side": 4,
       "max_identifier_bytes": 128,
       "max_request_id_bytes": 64,
       "max_method_bytes": 128,
@@ -3037,7 +3043,111 @@
       "type-parameter"
     ]
   },
+  "renderer_profile_schema": {
+    "required": [
+      "node_types",
+      "builtins",
+      "features",
+      "extensions"
+    ],
+    "optional": [
+      "members",
+      "limits"
+    ],
+    "members": {
+      "required": [
+        "universal",
+        "nodes",
+        "semantics",
+        "surface"
+      ],
+      "optional": [],
+      "field_types": {
+        "universal": "identifier-array",
+        "nodes": "node-member-map",
+        "semantics": "identifier-array",
+        "surface": "identifier-array"
+      }
+    },
+    "limits": {
+      "required": [],
+      "optional": [
+        "max_nodes",
+        "max_lazy_items",
+        "max_node_depth",
+        "max_size_variants",
+        "max_remote_views_bytes"
+      ],
+      "field_types": {
+        "max_nodes": "positive-integer",
+        "max_lazy_items": "positive-integer",
+        "max_node_depth": "positive-integer",
+        "max_size_variants": "positive-integer",
+        "max_remote_views_bytes": "positive-integer"
+      }
+    }
+  },
+  "widget_size_variant_schema": {
+    "required": [
+      "min_width",
+      "min_height",
+      "body"
+    ],
+    "optional": [],
+    "field_types": {
+      "min_width": "dp",
+      "min_height": "dp",
+      "body": "node"
+    },
+    "selection": "first-authored-eligible"
+  },
+  "swipe_schema": {
+    "legacy": {
+      "required": [
+        "label",
+        "on_trigger"
+      ],
+      "optional": [
+        "icon",
+        "color"
+      ]
+    },
+    "rich": {
+      "required": [
+        "actions"
+      ],
+      "optional": [
+        "commit"
+      ],
+      "min_actions": 1,
+      "max_actions_limit": "max_swipe_actions_per_side",
+      "commit_max_actions": 2
+    },
+    "action": {
+      "required": [
+        "label",
+        "on_trigger"
+      ],
+      "optional": [
+        "icon",
+        "color"
+      ]
+    }
+  },
   "surface_spec_variants": {
+    "widget": {
+      "required": [
+        "title",
+        "body"
+      ],
+      "optional": [
+        "empty",
+        "header_action",
+        "size_variants"
+      ],
+      "node_body": true,
+      "multi_view": false
+    },
     "tile": {
       "required": [
         "label"

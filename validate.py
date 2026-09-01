@@ -4,7 +4,7 @@
 This is the repo's self-check and a runnable reference for the conformance
 checks an implementation's own test suite should perform (SPEC 24.5–24.6):
 
-- contract.json structural self-consistency (format 10);
+- contract.json structural self-consistency (format 12);
 - SPEC.md §8 error table and §11 method registry cross-checked against
   contract.json, so spec and contract cannot drift silently;
 - goldens/widgets.golden and goldens/hypertext.golden: every node validates
@@ -56,6 +56,9 @@ OFFLINE_POLICIES = set(ACTIONS["offline_policies"])
 VARIANT_SCHEMA = contract.get("variant_schema", {})
 SEMANTICS_SCHEMA = contract.get("semantics_schema", {})
 TEXT_INPUT_SCHEMA = contract.get("text_input_schema", {})
+RENDERER_PROFILE_SCHEMA = contract.get("renderer_profile_schema", {})
+WIDGET_SIZE_VARIANT_SCHEMA = contract.get("widget_size_variant_schema", {})
+SWIPE_SCHEMA = contract.get("swipe_schema", {})
 
 MAX_HEADER = contract["limits"]["fixed"]["max_header_bytes"]
 MAX_BODY = contract["limits"]["fixed"]["max_body_bytes"]
@@ -85,13 +88,66 @@ def check_contract():
     for field in ("contract_format", "protocol_version", "spec_version",
                   "core_node_set", "node_types", "node_schema", "methods",
                   "error_codes", "limits", "capabilities",
-                  "variant_schema", "semantics_schema", "text_input_schema"):
+                  "variant_schema", "semantics_schema", "text_input_schema",
+                  "renderer_profile_schema", "widget_size_variant_schema",
+                  "swipe_schema"):
         if field not in contract:
             problem(f"contract.json: missing `{field}`")
-    if contract.get("contract_format") != 11:
-        problem("contract.json: contract_format must be 11")
+    if contract.get("contract_format") != 12:
+        problem("contract.json: contract_format must be 12")
     if contract.get("protocol_version") != 3:
         problem("contract.json: protocol_version must be 3")
+    expected_profile_required = [
+        "node_types", "builtins", "features", "extensions",
+    ]
+    if RENDERER_PROFILE_SCHEMA.get("required") != expected_profile_required:
+        problem("contract.json: renderer profile required members drifted")
+    if RENDERER_PROFILE_SCHEMA.get("optional") != ["members", "limits"]:
+        problem("contract.json: renderer profile optional members drifted")
+    if set(RENDERER_PROFILE_SCHEMA.get("members", {}).get("required", [])) != {
+            "universal", "nodes", "semantics", "surface"}:
+        problem("contract.json: renderer member support shape drifted")
+    if WIDGET_SIZE_VARIANT_SCHEMA.get("required") != [
+            "min_width", "min_height", "body"] or \
+            WIDGET_SIZE_VARIANT_SCHEMA.get("optional") != []:
+        problem("contract.json: WidgetSizeVariant must be closed and require "
+                "min_width, min_height, body")
+    fixed = contract.get("limits", {}).get("fixed", {})
+    expected_widget_limits = {
+        "max_widget_nodes": 128,
+        "max_widget_lazy_items": 40,
+        "max_widget_node_depth": 12,
+        "max_widget_size_variants": 8,
+        "max_widget_remote_views_bytes": 716800,
+        "max_swipe_actions_per_side": 4,
+    }
+    for name, expected in expected_widget_limits.items():
+        if fixed.get(name) != expected:
+            problem(f"contract.json: {name} must be {expected}")
+    widget_variant = contract.get("surface_spec_variants", {}).get("widget")
+    if widget_variant != {
+            "required": ["title", "body"],
+            "optional": ["empty", "header_action", "size_variants"],
+            "node_body": True,
+            "multi_view": False,
+    }:
+        problem("contract.json: widget SurfaceSpec shape drifted")
+    if SWIPE_SCHEMA.get("legacy") != {
+            "required": ["label", "on_trigger"],
+            "optional": ["icon", "color"],
+    } or SWIPE_SCHEMA.get("action") != {
+            "required": ["label", "on_trigger"],
+            "optional": ["icon", "color"],
+    }:
+        problem("contract.json: swipe action shape drifted")
+    rich_swipe = SWIPE_SCHEMA.get("rich", {})
+    if rich_swipe.get("required") != ["actions"] or \
+            rich_swipe.get("optional") != ["commit"] or \
+            rich_swipe.get("min_actions") != 1 or \
+            rich_swipe.get("max_actions_limit") != \
+            "max_swipe_actions_per_side" or \
+            rich_swipe.get("commit_max_actions") != 2:
+        problem("contract.json: rich swipe constraints drifted")
     for t in contract.get("core_node_set", []):
         if t not in NODE_TYPES:
             problem(f"contract.json: core node `{t}` not in node_types")
@@ -560,6 +616,80 @@ def check_slider_values(node, path: str):
         problem(f"{path}.value: must equal a listed discrete value (SPEC 4.3)")
 
 
+def check_swipe_side(value, path: str, direction: str,
+                     ctx: NodeDocument, owner_id: str | None):
+    """Amendment #184: validate both the legacy and reveal-first shapes."""
+    if not isinstance(value, dict):
+        problem(f"{path}: swipe side must be an object")
+        return
+
+    action_schema = SWIPE_SCHEMA.get("action", {})
+    action_allowed = set(action_schema.get("required", [])) | \
+        set(action_schema.get("optional", []))
+
+    def one(action, action_path: str):
+        if not isinstance(action, dict):
+            problem(f"{action_path}: SwipeAction must be an object")
+            return None
+        for required in action_schema.get("required", []):
+            if required not in action:
+                problem(f"{action_path}: missing required `{required}`")
+        for member in action:
+            if member not in action_allowed:
+                problem(f"{action_path}: unknown SwipeAction member `{member}`")
+        label = action.get("label")
+        if not isinstance(label, str) or not label:
+            problem(f"{action_path}.label: must be a non-empty string")
+            label = None
+        if "icon" in action and not is_identifier(action.get("icon")):
+            problem(f"{action_path}.icon: must be an identifier")
+        descriptor = action.get("on_trigger")
+        if not isinstance(descriptor, dict):
+            problem(f"{action_path}.on_trigger: must be an ActionDescriptor")
+        else:
+            if "action" not in descriptor:
+                problem(f"{action_path}.on_trigger: swipe hooks require a remote action")
+            check_action(descriptor, f"{action_path}.on_trigger", ctx,
+                         hook=f"swipe_{direction}.on_trigger",
+                         owner_id=owner_id)
+        return label
+
+    if "actions" not in value:
+        legacy = SWIPE_SCHEMA.get("legacy", {})
+        allowed = set(legacy.get("required", [])) | \
+            set(legacy.get("optional", []))
+        for member in value:
+            if member not in allowed:
+                problem(f"{path}: unknown legacy swipe member `{member}`")
+        one(value, path)
+        return
+
+    rich = SWIPE_SCHEMA.get("rich", {})
+    allowed = set(rich.get("required", [])) | set(rich.get("optional", []))
+    for member in value:
+        if member not in allowed:
+            problem(f"{path}: unknown rich swipe member `{member}`")
+    actions = value.get("actions")
+    if not isinstance(actions, list):
+        problem(f"{path}.actions: must be an array")
+        return
+    maximum = contract["limits"]["fixed"]["max_swipe_actions_per_side"]
+    if not rich.get("min_actions", 1) <= len(actions) <= maximum:
+        problem(f"{path}.actions: needs 1..{maximum} actions")
+    commit = value.get("commit", False)
+    if not isinstance(commit, bool):
+        problem(f"{path}.commit: must be a boolean")
+    if commit is True and len(actions) > rich.get("commit_max_actions", 2):
+        problem(f"{path}.commit: deep commit supports at most two actions")
+    labels = []
+    for i, action in enumerate(actions):
+        label = one(action, f"{path}.actions[{i}]")
+        if label is not None:
+            if label in labels:
+                problem(f"{path}.actions[{i}].label: duplicate swipe label")
+            labels.append(label)
+
+
 def check_text_input(node, path: str):
     """Validate the complete amendment #181 text-input envelope."""
     value = node.get("value", "")
@@ -979,6 +1109,12 @@ def _check_node(value, path: str, depth: int, ctx: NodeDocument,
                 check_enum_options(value, path)
             if t == "slider":
                 check_slider_values(value, path)
+            for swipe_member, direction in (
+                    ("swipe_start", "start"), ("swipe_end", "end")):
+                if swipe_member in value:
+                    check_swipe_side(
+                        value[swipe_member], f"{path}.{swipe_member}",
+                        direction, ctx, value.get("id"))
             if t == "tab_selector":
                 items = value.get("items")
                 selected = value.get("selected")
@@ -1004,6 +1140,8 @@ def _check_node(value, path: str, depth: int, ctx: NodeDocument,
     for key, child in value.items():
         if node_type == "variant_host" and key == "variants":
             continue  # check_variants performed the exhaustive branch walk.
+        if node_type is not None and key in {"swipe_start", "swipe_end"}:
+            continue  # check_swipe_side validates and walks every descriptor.
         if node_type is not None and key == "semantics":
             continue  # recognized members/actions were checked explicitly;
                       # unknown semantics members are receiver-opaque.
@@ -1036,6 +1174,66 @@ def check_node_documents(documents: list[tuple[object, str]]):
     for value, path in documents:
         _check_node(value, path, 0, ctx)
     ctx.finish()
+
+
+def check_widget_surface(spec, path: str):
+    """Validate one complete widget wrapper, including every size body."""
+    if not isinstance(spec, dict):
+        problem(f"{path}: widget spec must be an object")
+        return
+    schema = contract["surface_spec_variants"]["widget"]
+    required, optional = set(schema["required"]), set(schema["optional"])
+    for member in required:
+        if member not in spec:
+            problem(f"{path}: widget spec missing `{member}`")
+    for member in spec:
+        if member not in required and member not in optional:
+            problem(f"{path}.{member}: unknown widget member")
+    if not isinstance(spec.get("title"), str):
+        problem(f"{path}.title: must be a string")
+    if "header_action" in spec:
+        action = spec["header_action"]
+        if not isinstance(action, dict):
+            problem(f"{path}.header_action: must be an ActionDescriptor")
+        else:
+            check_action(action, f"{path}.header_action")
+
+    documents = [(spec.get("body"), f"{path}.body")]
+    if "empty" in spec:
+        documents.append((spec["empty"], f"{path}.empty"))
+    variants = spec.get("size_variants", [])
+    if not isinstance(variants, list):
+        problem(f"{path}.size_variants: must be an array")
+        variants = []
+    maximum = contract["limits"]["fixed"]["max_widget_size_variants"]
+    if len(variants) > maximum:
+        problem(f"{path}.size_variants: exceeds {maximum}")
+    variant_schema = WIDGET_SIZE_VARIANT_SCHEMA
+    allowed = set(variant_schema.get("required", [])) | \
+        set(variant_schema.get("optional", []))
+    for i, variant in enumerate(variants):
+        vpath = f"{path}.size_variants[{i}]"
+        if not isinstance(variant, dict):
+            problem(f"{vpath}: must be an object")
+            continue
+        for member in variant_schema.get("required", []):
+            if member not in variant:
+                problem(f"{vpath}: missing `{member}`")
+        for member in variant:
+            if member not in allowed:
+                problem(f"{vpath}.{member}: unknown WidgetSizeVariant member")
+        for dimension in ("min_width", "min_height"):
+            value = variant.get(dimension)
+            if isinstance(value, bool) or not isinstance(value, (int, float)) \
+                    or not math.isfinite(float(value)) or value < 0:
+                problem(f"{vpath}.{dimension}: must be a non-negative dp number")
+        documents.append((variant.get("body"), f"{vpath}.body"))
+
+    for document, document_path in documents:
+        if not (isinstance(document, dict)
+                and isinstance(document.get("t"), str)):
+            problem(f"{document_path}: must be a Node")
+    check_node_documents(documents)
 
 
 # ------------------------------------------------------------- frames -------
@@ -1815,6 +2013,11 @@ def main() -> int:
             check_node(obj, f"widgets:{n:02d}")
         widgets += 1
 
+    widget_surfaces = 0
+    for n, line in enumerate(golden_lines("widget-surfaces.golden")):
+        check_widget_surface(json.loads(line), f"widget-surfaces:{n:02d}")
+        widget_surfaces += 1
+
     hyper = 0
     for n, line in enumerate(golden_lines("hypertext.golden")):
         arr = json.loads(line)
@@ -1844,7 +2047,8 @@ def main() -> int:
         print("\n".join(problems))
         print(f"\nFAIL: {len(problems)} problem(s)")
         return 1
-    print(f"OK: {frames} frames, {widgets} widget lines, {hyper} hypertext "
+    print(f"OK: {frames} frames, {widgets} widget lines, "
+          f"{widget_surfaces} widget surfaces, {hyper} hypertext "
           f"nodes, {wire} wire fixtures x3 chunkings, "
           f"{editor} editor splice cases, {semantics} semantics witnesses, "
           f"{text_inputs} text-input witnesses validate "

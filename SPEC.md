@@ -270,6 +270,12 @@ representation, so optional escaping or whitespace cannot defeat the budget.
 | `max_field_bytes` | REQUIRED, at least `65536` and no greater than `max_frame_bytes - 2048`; maximum encoded bytes per input value, including a volatile password value |
 | `max_input_state_bytes` | REQUIRED, at least `262144`; maximum encoded bytes in the complete welcome `input_state` object |
 | `max_capture_fields` | REQUIRED, at least `64` IDs in one ActionDescriptor |
+| `max_widget_nodes` | Fixed at `128`; maximum Nodes across a `widget:*` spec's body, empty body, and every size variant |
+| `max_widget_lazy_items` | Fixed at `40`; maximum children presented by one widget `lazy_column` |
+| `max_widget_node_depth` | Fixed at `12`; maximum Node depth in a widget document |
+| `max_widget_size_variants` | Fixed at `8`; maximum authored widget size variants |
+| `max_widget_remote_views_bytes` | Fixed at `716800`; maximum measured marshalled `RemoteViews` bytes accepted for a widget update |
+| `max_swipe_actions_per_side` | Fixed at `4`; maximum actions in one rich swipe side |
 | `max_triggers` | REQUIRED when `triggers` is granted |
 | `max_trigger_responses` | REQUIRED when `triggers` is granted; maximum `on_fire` entries per trigger |
 | `max_reminders` | REQUIRED when `reminders.owner` is granted |
@@ -1156,6 +1162,27 @@ extension against the target profile and MUST NOT interpret a missing profile
 or list as support for everything. Section 22.4 registers the
 constraining-feature vocabulary; Section 16.2.1 registers renderer extensions.
 
+A profile MAY also carry `members` to narrow whole-node support to the exact
+members that target implements. Its closed shape is
+`{universal, nodes, semantics, surface}`. `universal` and `semantics` are
+distinct arrays of supported Section 16.5 and 16.5.1 names. `nodes` maps every
+advertised node type to a distinct array of supported node-specific members,
+including every required member for that type. `surface` lists the supported
+members of the applicable Section 13.4 wrapper, including its required
+members. An omitted `members` preserves the whole-schema support implied by
+earlier protocol-3 profiles. When it is present, Emacs MUST omit every known
+member absent from the corresponding list, and the Companion MUST reject an
+authored absent member with `1201 content-invalid`; it MUST NOT silently erase
+that member. Advertising `semantics` in `universal` with an empty `semantics`
+array is invalid; omit the universal member instead.
+
+A profile MAY carry a closed `limits` object containing positive integers
+`max_nodes`, `max_lazy_items`, `max_node_depth`, `max_size_variants`, and
+`max_remote_views_bytes`. The widget profile MUST carry all five with values no
+greater than their corresponding fixed `max_widget_*` limits in Section 4.5.
+They are target admission and rendered-output limits, not permission to
+truncate an accepted document.
+
 The applicable target is `app` for `app:*`, `notification` for
 `notification:*`, `widget` for `widget:*`, `tile` for `tile:*`, and `dialog` for
 `dialog.show`.
@@ -1473,13 +1500,25 @@ The namespace determines the exact SurfaceSpec variant:
 |---|---|
 | `app:*` | One root Node or the multi-view object below |
 | `notification:*` | `{body: Node, meta?}` from Section 18.5; multi-view is prohibited |
-| `widget:*` | `{title: string, body: Node, empty?: Node, header_action?: ActionDescriptor}`; multi-view is prohibited |
+| `widget:*` | `{title: string, body: Node, empty?: Node, header_action?: ActionDescriptor, size_variants?: WidgetSizeVariant[]}`; multi-view is prohibited |
 | `tile:*` | `{label: string, icon?: identifier, subtitle?: string, active?: boolean, on_tap?: ActionDescriptor}`; no Node body, no stateful node; multi-view is prohibited |
 
 `stale_spec`, when supplied, MUST use the same variant as `spec`.
 `current_view` is valid only for a multi-view `app:*` spec; a
 `notification:*`, `widget:*`, or `tile:*` spec MUST NOT carry `views`. Any
 other combination MUST receive `1201 content-invalid`.
+
+A `WidgetSizeVariant` is the closed object
+`{min_width: dp, min_height: dp, body: Node}`. `size_variants` contains at most
+eight entries. On each render the Companion MUST select the first authored
+variant whose two minima are no greater than the widget instance's current
+available size; when none is eligible it MUST use the top-level `body`.
+Variant order is therefore semantic. The top-level body, `empty`, and every
+variant body are one atomic widget document: all are validated before
+admission, share one document-global ID namespace, and together spend the
+widget profile's node, depth, and aggregate budgets. Only the selected body is
+presented. Resizing chooses again from the already accepted snapshot and does
+not dispatch an action or advance a surface revision.
 
 A `tile:*` spec describes a fixed host Quick-Settings slot, so it MUST NOT
 carry a Node, a `views` object, `current_view`, or a stateful node; a
@@ -1646,8 +1685,12 @@ surface MUST erase every draft belonging to it.
 
 Section 13.4 defines the notification, widget, and tile wrappers.
 `header_action`, when present, is an ActionDescriptor. The Companion MUST NOT
-invent a default header action. A widget `empty` Node is rendered only when
-`body` contains no presentable content according to the widget profile. A tile
+invent a default header action. A widget title is non-interactive metadata
+unless `header_action` is present, in which case the Companion MUST expose one
+standard clickable title row using that descriptor. Otherwise the selected
+body may use the entire widget slot. A widget `empty` Node is rendered only
+when the selected body contains no non-empty text, presentable icon, or admitted
+interactive descendant according to the widget profile. A tile
 spec carries neither `header_action` nor `empty`; those are notification and
 widget concepts.
 
@@ -1848,7 +1891,7 @@ is invalid.
 |---|---|
 | `on_change`, `on_submit`, `on_save`, `on_enter`, `on_pick` | `value`, except that a password submission uses `fields` as specified below |
 | `on_reorder` | `from`, `to` and, when every item has a stable authored identity, `order` |
-| `swipe_start.on_trigger`, `swipe_end.on_trigger` | `direction` as `start` or `end` |
+| every `swipe_start.on_trigger`, `swipe_end.on_trigger` occurrence | `direction` as `start` or `end` |
 | `on_add_row`, `on_add_col` | `index` |
 | `on_day_tap` | `value` as `YYYY-MM-DD` |
 | `on_month_change` | `value` as `YYYY-MM` |
@@ -2331,6 +2374,13 @@ per-member validation of Section 16.1 applies only to advertised and Core Node
 Set types. A validator keyed on the full contract vocabulary MUST therefore
 gate its per-type rules on the advertised `node_types` set.
 
+When the applicable profile carries Section 10.2 `members`, an advertised node
+type still degrades only at the type boundary; member admission is strict.
+Every authored universal, node-specific, Semantics, and surface-wrapper member
+MUST appear in its corresponding positive list. The discriminator `t` is
+implicit and is not listed. A known-but-unadvertised member is not an unknown
+field under Section 16.3 and makes the containing document content-invalid.
+
 #### 16.2.1 Renderer extensions
 
 EBP node semantics are independent of the implementation used to present them.
@@ -2471,8 +2521,9 @@ state from the existing Node vocabulary, including:
 - `collapsible` exposes expanded or collapsed state;
 - input, toggle, selection, tab, image, slider, progress, and button roles are
   derived from their Node types; and
-- each labeled `swipe_start` or `swipe_end` side is also exposed as an
-  accessibility custom action invoking that side's `on_trigger` descriptor.
+- each action in a labeled `swipe_start` or `swipe_end` side is also exposed as
+  a distinct accessibility custom action invoking that action's `on_trigger`
+  descriptor; the legacy one-action form exposes one action.
 
 Semantics MUST NOT clear, hide, merge, or replace descendant semantics; weaken
 an existing `enabled` or `read_only` restriction; contradict a derived role or
@@ -2713,10 +2764,26 @@ A cell MUST contain `spans: RichSpan[]` and MAY contain `on_tap` and
 `on_long_tap`. `aligns`, when present, is an array of `start`, `center`, or
 `end`. An unknown row kind makes the table invalid.
 
-A swipe side is `{icon?, label, color?, on_trigger}`. A Companion MUST dispatch
-`on_trigger` at most once per completed gesture and MUST return the item to its
-resting position. Emacs SHOULD provide a non-swipe path to the same action for
-accessibility and for Companions without swipe support.
+A swipe side has either the legacy closed shape
+`{icon?, label, color?, on_trigger}` or the rich closed shape
+`{actions: SwipeAction[], commit?: boolean}`. A `SwipeAction` is the closed
+object `{icon?, label, color?, on_trigger}`. Labels MUST be non-empty and
+distinct within a side. `actions` contains one through four entries in authored
+order. `commit` defaults to `false` and MAY be `true` only with one or two
+actions.
+
+The legacy form retains its existing one-gesture behavior: crossing the
+implementation's commit threshold MAY invoke its single action on release.
+The rich form is reveal-first by default. Crossing its ordinary threshold MUST
+only settle the row open so the user can inspect and tap an action; it MUST NOT
+dispatch merely because that threshold was crossed. Tapping the displaced
+foreground closes it without dispatch. A receiver SHOULD keep at most one row
+open in a presentation scope. When `commit: true`, a deliberately deeper drag
+MAY commit only the first authored action; the ordinary threshold still only
+reveals. Every action dispatches at most once per completed gesture or tap, and
+the item returns to its resting position after dispatch. Emacs SHOULD provide a
+non-swipe path to the same action for accessibility and for Companions without
+swipe support.
 
 ### 17.4 Input nodes
 
