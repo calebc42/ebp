@@ -3388,17 +3388,44 @@ unique reminder IDs. Each reminder is a closed object with this schema:
 | `body` | string | no | User-visible supporting text |
 | `at_ms` | timestamp | yes | Earliest presentation time |
 | `on_tap` | remote ActionDescriptor | no | Action dispatched for an explicit tap |
+| `actions` | NotificationAction array | no | Ordered notification actions; requires `reminders.actions` |
 
-A reminder's `on_tap` MUST NOT carry `capture_fields`. Section 14.1 makes
-`capture_fields` valid only inside a surface or dialog containing every named
-node, and a reminder is neither; Section 18.5 already carries the twin rule for
-notification actions. A `reminders.set` containing such a reminder is invalid:
-the Companion MUST reject the entire request with `1201 content-invalid` naming
-`on_tap.capture_fields`.
+A reminder's `actions` entries have the closed Section 18.5 NotificationAction
+shape and semantics, including authored order, inline input, and
+safe-admission dismissal. The Companion MAY present fewer actions, so Emacs
+MUST author the most important first. `actions` is valid only when the session
+granted `reminders.actions`; otherwise Emacs MUST omit it and the Companion MUST
+reject a containing set with `1201 content-invalid`. The action occurrence is
+resolved from the pairing-scoped durable reminder record rather than from
+application semantics embedded in a platform component. Consequently an action
+tap remains routable after process death and Kotlin, Java, Swift, or another
+Companion implementation MUST NOT interpret an action name as "complete",
+"reschedule", or any other application operation.
+
+A reminder's `on_tap`, and every `actions[].on_tap`, MUST NOT carry
+`capture_fields`. Section 14.1 makes `capture_fields` valid only inside a
+surface or dialog containing every named node, and a reminder is neither;
+Section 18.5 already carries the twin rule for notification actions. A
+`reminders.set` containing such a descriptor is invalid: the Companion MUST
+reject the entire request with `1201 content-invalid` naming the offending
+member.
 
 The Companion MUST inject
-`owner` and `reminder_id` into a copy of `on_tap.args`; authored conflicting
-members make the set invalid.
+`owner` and `reminder_id` into a copy of `on_tap.args` and into a copy of each
+`actions[].on_tap.args`; authored conflicting members make the set invalid.
+
+When `reminders.actions` is granted, a reminder's `on_tap` or an
+`actions[].on_tap` MAY carry `open_surface` with the Section 14.1
+`action.open_surface` shape. This is the receiver-local adjunct from Section
+14.1 applied to an explicit notification gesture: it selects the named present
+`app:*` surface and MAY bring the Companion's application host to the
+foreground without waiting for Emacs. It does not change a SurfaceSpec,
+fabricate an action result, or weaken the remote descriptor's offline policy.
+On a platform that prohibits notification trampolines, the Companion MUST use
+a direct activity/window PendingIntent or its platform equivalent rather than
+launching the host indirectly from a broadcast or background service. Without
+the `reminders.actions` grant, `open_surface` remains invalid in every reminder
+descriptor.
 
 The Companion MUST validate the entire set, atomically replace only that
 owner's prior set, persist the accepted set across process and device restarts,
@@ -3434,9 +3461,11 @@ replaced before presentation, or while the platform notification permission is
 withdrawn; in the latter case the Companion MUST present on the next opportunity
 after permission is restored if `at_ms` has passed and the tuple has not fired.
 Replacing an unchanged tuple preserves fired state; changing `at_ms` creates a
-new schedule. Removing a reminder MUST delete its fired receipt; re-adding the
-same tuple later creates a new schedule and MAY present again. User dismissal
-without tapping MUST NOT dispatch an action. A tap
+new schedule. Removing a reminder or replacing its `at_ms` MUST also cancel any
+still-visible presentation for the old tuple. Removing a reminder MUST delete
+its fired receipt; re-adding the same tuple later creates a new schedule and
+MAY present again. User dismissal without tapping MUST NOT dispatch an action.
+A body tap or action tap
 MUST enter Section 14's normal action pipeline using the authored offline
 policy. The same safe-admission definition as Section 18.5 applies; the
 Companion MAY dismiss the reminder only after safe admission under Section
@@ -4528,6 +4557,7 @@ This document defines these session capability names:
 | `presentation.pie-menu` | `pie_menu.show` and `pie_menu.dismiss` |
 | `theme` | `theme.set` |
 | `reminders.owner` | Owner-scoped `reminders.set` |
+| `reminders.actions` | Ordered reminder actions and reminder `open_surface` adjuncts |
 | `editor.sync` | Section 19 editor methods |
 | `capabilities` | `capability.invoke` and `device.caps` |
 | `triggers` | `triggers.set`, trigger reports, and predicate reports |
