@@ -1173,6 +1173,7 @@
     "fg": "color",
     "animate_shape": "boolean",
     "trailing_icon": "identifier",
+    "trailing_text": "string",
     "shadow_elevation": "dp",
     "supporting_text": "string",
     "prefix": "string",

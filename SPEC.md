@@ -2798,7 +2798,7 @@ node. `editor` uses `read_only` for editing permission in addition to
 | `button` | `label: string`, `on_tap: ActionDescriptor` | `icon`, `variant`, `enabled`. `variant`: `filled` (default), `tonal`, `outlined`, or `text`. |
 | `icon_button` | `icon: identifier`, `on_tap: ActionDescriptor` | `content_description`, `badge`, `enabled` |
 | `chip` | `label: string` | `on_tap`, `selected`, `icon`, `enabled` |
-| `menu` | `items: MenuItem[]` | `icon`, `enabled` |
+| `menu` | none | `items`, `groups`, `footer`, `icon`, `enabled`, `initial_scroll`. Exactly one of `items: MenuItem[]` and `groups: MenuGroup[]`. `icon` is the overflow anchor's glyph; `footer` is one Node drawn inside the popup below the rows; `initial_scroll`: `start` (default) or `end`. |
 | `text_input` | `id: identifier` | `value`, `hint`, `label`, `on_change`, `on_submit`, `single_line`, `min_lines`, `max_lines`, `monospace`, `syntax`, `password`, `keyboard`, `autofocus`, `clear_on_submit`, `variant`, `is_error`, `supporting_text`, `prefix`, `suffix`, `leading_icon`, `trailing_icon`, `max_length`, `selection`, `hide_keyboard_on_submit`, `content_padding`, `mask`, `filter`, `enabled` |
 | `editor` | `id: identifier` | `document`, `value`, `on_save`, `on_enter`, `single_line`, `min_lines`, `max_lines`, `read_only`, `syntax`, `line_numbers`, `complete`, `chromeless`, `publish_state`, `autofocus`, `toolbar`, `enabled` |
 | `checkbox` | `id: identifier` | `checked`, `label`, `on_change`, `enabled` |
@@ -2808,8 +2808,28 @@ node. `editor` uses `read_only` for editing permission in addition to
 | `time_button` | `label: string`, `on_pick: ActionDescriptor` | `value`, `enabled` |
 | `slider` | `id: identifier`, `on_change: ActionDescriptor` | `value`, `min`, `max`, `values`, `enabled` |
 
-A `MenuItem` MUST contain `label` and `on_tap` and MAY contain `icon` and
-`enabled`; `enabled` defaults to `true`. An `EnumOption` MUST contain `label`
+A `MenuItem` MUST contain `label` and `on_tap` and MAY contain `icon`,
+`supporting_text`, `trailing_icon`, `trailing_text`, `checked`, `checked_icon`,
+and `enabled`; `enabled` defaults to `true`. `supporting_text` is a second
+line under the label. `trailing_icon` (an identifier) and `trailing_text` (a
+short string such as a keyboard shortcut) occupy the item's single trailing
+slot and are therefore mutually exclusive; a Companion MUST reject an item
+carrying both with `1201 content-invalid`. Both are decoration over an item
+whose `label` already carries its meaning, so Section 16.4 forbids either
+carrying meaning alone.
+
+A `checked` member present makes the item CHECKABLE: `checked` is authored
+presentation state, exactly like `chip.selected`, so Emacs flips it on the
+next snapshot rather than the Companion holding it. While checked,
+`checked_icon` (default `check`) replaces the leading `icon`, and activating
+a checkable item MUST leave the menu open; activating any other item MUST
+close it before dispatching `on_tap`.
+
+A `MenuGroup` is `{label?, items}`: `items` is a non-empty `MenuItem[]`, and a
+non-empty `label` heads the group above a separator. A menu MUST present one
+item layout throughout a single popup.
+
+An `EnumOption` MUST contain `label`
 and `value`; `value` MUST be a
 string, number, or boolean. Option values MUST be distinct under Section 4.3.
 

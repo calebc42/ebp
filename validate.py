@@ -616,6 +616,57 @@ def check_slider_values(node, path: str):
         problem(f"{path}.value: must equal a listed discrete value (SPEC 4.3)")
 
 
+def check_menu_items(node, path: str):
+    """SPEC 17.4: a MenuItem needs a label and an on_tap, and has ONE
+    trailing slot.
+
+    Exactly one of `items` and `groups` carries the rows; an absent `items`
+    belongs to the grouped form and is not an error here. A MenuItem without
+    `on_tap` would draw a row that cannot do anything, so the spec requires
+    it; the trailing pair is mutually exclusive because the item has a single
+    trailing slot to put them in.
+    """
+
+    def check_items(items, at: str):
+        if not isinstance(items, list):
+            problem(f"{at}: must be an array")
+            return
+        for i, item in enumerate(items):
+            if not isinstance(item, dict):
+                problem(f"{at}[{i}]: must be a MenuItem object")
+                continue
+            if not isinstance(item.get("label"), str):
+                problem(f"{at}[{i}].label: MenuItem label must be a string")
+            if not isinstance(item.get("on_tap"), dict):
+                problem(f"{at}[{i}].on_tap: MenuItem needs an ActionDescriptor")
+            if "trailing_icon" in item and "trailing_text" in item:
+                problem(f"{at}[{i}]: trailing_icon and trailing_text "
+                        "are mutually exclusive")
+
+    has_items = "items" in node
+    has_groups = "groups" in node
+    if has_items == has_groups:
+        problem(f"{path}: menu carries exactly one of items|groups")
+        return
+    if has_groups:
+        groups = node.get("groups")
+        if not isinstance(groups, list):
+            problem(f"{path}.groups: must be an array")
+            return
+        for g, group in enumerate(groups):
+            if not isinstance(group, dict):
+                problem(f"{path}.groups[{g}]: must be a group object")
+                continue
+            items = group.get("items")
+            if not isinstance(items, list) or not items:
+                problem(f"{path}.groups[{g}].items: group items must be "
+                        "a non-empty array")
+                continue
+            check_items(items, f"{path}.groups[{g}].items")
+    else:
+        check_items(node.get("items"), f"{path}.items")
+
+
 def check_swipe_side(value, path: str, direction: str,
                      ctx: NodeDocument, owner_id: str | None):
     """Amendment #184: validate both the legacy and reveal-first shapes."""
@@ -1109,6 +1160,8 @@ def _check_node(value, path: str, depth: int, ctx: NodeDocument,
                 check_enum_options(value, path)
             if t == "slider":
                 check_slider_values(value, path)
+            if t == "menu":
+                check_menu_items(value, path)
             for swipe_member, direction in (
                     ("swipe_start", "start"), ("swipe_end", "end")):
                 if swipe_member in value:
